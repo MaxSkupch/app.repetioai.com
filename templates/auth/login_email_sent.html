@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | Repetio AI{% endblock %}
+
+{% block head %}{% endblock %}
+
+
+{% block body %}
+<body class="min-h-screen flex justify-center py-12">
+    <div class="flex flex-col justify-center px-6 py-12 lg:px-8 w-3/4 sm:max-w-md">
+        <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+            <img class="mx-auto h-10 w-auto" src="{{ url_for('static', filename='logo/simple.svg') }}" alt="repetio ai">   
+            <h1 class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">Sign in to your account</h1>
+        </div>
+    
+        <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+            {% include 'elements/flash_text_displays/auth.html' with context %}
+            {% include 'elements/captcha/floating.html' with context %}
+                
+            <p class="mt-10 text-center text-sm text-gray-500">
+                Something went wrong? 
+                <a href="{{ url_for('auth_login')}}" class="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Try again</a>
+            </p>
+        </div>
+    </div>
+
+    {% include 'elements/footer/bottom_right_legal_links.html' with context %}
+    
+    <!--Adds the client-browser time zone to the form input-->
+    <script> 
+        document.addEventListener('DOMContentLoaded', function() {
+            var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById('timezone').value = timezone;
+        });
+    </script>
+</body>
+{% endblock %}

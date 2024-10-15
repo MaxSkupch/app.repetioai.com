@@ -1,0 +1,91 @@
+{% extends "dash/windows/base.html" %}
+
+{% block content %}
+<section class="">
+    <div class="container flex flex-col justify-center px-4 py-8 mx-auto md:p-8">
+        <div class="divide-y">
+            <div class="py-6 space-y-2 flex flex-col">
+                <h2 class="text-2xl font-semibold">Personal Information</h2>
+                <form   
+                    class="py-6 space-y-5" 
+                    hx-post="{{ url_for('auth_update_personal_information') }}" 
+                    hx-target="#personal_inforamtion"
+                >
+                    
+                    <p>Easily update your personal information. Ensure your account information is up-to-date. Note that your payment data is securely stored by Stripe.</p>
+                    
+                    <div class="space-y-5" id="personal_inforamtion">
+                        <div>
+                            <label for="firstname" class="block text-sm px-2 font-medium leading-6 text-gray-900">First name</label>
+                            <input id="firstname" name="firstname" type="text" autocomplete="given-name" required value="{{ first_name }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                        </div>
+                        <div>
+                            <label for="lastname" class="block text-sm px-2 font-medium leading-6 text-gray-900">Last name</label>
+                            <input id="lastname" name="lastname" type="text" autocomplete="family-name" required value="{{ last_name }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                        </div>
+                    </div>
+    
+                    <div class="flex gap-3">
+                        {% set text = 'Update Information' %}
+                        {% include 'elements/buttons/button_spinner.html'%}
+
+                        <a hx-get="{{ url_for('comp_account_personal_information') }}" hx-target="#personal_inforamtion" hx-swap="innerHTML" 
+                        class="flex w-[200px] justify-center rounded-2xl border-2 border-black px-3 py-1 text-sm font-semibold leading-6 text-black shadow-sm cursor-pointer hover:bg-indigo-900 hover:border-indigo-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >Cancel</a>
+                    </div>
+                </form>
+            </div>
+            <div class="py-6 space-y-2 flex flex-col">
+                <h2 class="text-2xl font-semibold">Update Email</h2>
+                <form class="py-6 space-y-5" hx-post="{{ url_for('auth_update_email') }}" hx-target="#update_email">
+                    <p>Update your email address. This email will be used for your login, so please make sure your email account is private and secure.</p>
+
+                    <div class="space-y-5" id="update_email">
+                        <input id="email" name="email" type="email" autocomplete="email" required value="{{ email }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                    </div>
+
+                    {% include 'elements/flash_text_displays/auth.html' with context %}
+                    
+                    <div class="flex gap-3">
+                        {% set text = 'Update Email' %}
+                        {% include 'elements/buttons/button_spinner.html'%}
+
+                        <a 
+                            hx-get="{{ url_for('comp_account_update_email_cancel') }}" 
+                            hx-target="#update_email" 
+                            hx-swap="innerHTML" 
+                            class="w-[200px] flex gap-2 justify-center items-center rounded-2xl border-2 border-black px-3 py-1 text-sm font-semibold leading-6 text-black shadow-sm cursor-pointer hover:bg-indigo-900 hover:border-indigo-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+            <div class="py-6 space-y-2 flex flex-col">
+                <h2 class="text-2xl font-semibold">Manage you Subscription</h2>
+                <div class="py-6 space-y-5">
+                    <p>Manage your billing and subscription settings. View and modify or pause subscriptions, update payment methods, download invoices, apply promo codes, and update personal information.</p>
+                    <a href="{{ stripe_customer_portal_url }}" target="_blank" class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    >Manage Subscription</a>
+                </div>
+            </div>
+            <div class="py-6 space-y-2 flex flex-col">
+                <h2 class="text-2xl font-semibold">Delete your Account</h2>
+                <div class="py-6 space-y-5">
+                    <p>
+                        Permanently delete your account and all associated data. This action is irreversible. Please ensure you have downloaded any important information before proceeding. Note that your payment data is securely stored by Stripe and will be removed in accordance with their data retention policies.<br><br>
+                        Deletion of the account may take up to 14 days. To prevent any further charges, we recommend you cancel your subscription before requesting account deletion.
+                    </p>
+                    <a href="mailto:contact@repetioai.com?subject=Account%20Deletion%20Request&body=I%20hereby%20request%20the%20deletion%20of%20my%20account%20under%20the%20email%20address%20{{ url_encoded_email }}.%20%0A%0AI%20will%20send%20this%20request%20from%20the%20email%20account%20mentioned%20above%20and%20recognize%20that%20an%20account%20deletion%20is%20irreversible.%0A%0AFurthermore%2C%20I%20have%20also%20downloaded%20invoices%20and%20all%20other%20data%20I%20need%2C%20as%20I%20realize%20that%20I%20will%20no%20longer%20have%20access%20to%20them%20after%20an%20account%20deletion%20has%20been%20requested.%0A%0A%0A%0ARegards%2C%0A%0A%5Byour%20name%5D" 
+                    class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    >Request Deletion</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+
+{% endblock %}

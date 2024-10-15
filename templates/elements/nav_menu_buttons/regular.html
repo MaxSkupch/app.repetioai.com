@@ -1,0 +1,5 @@
+<a id="{{ dash }}" class="nav-item" hx-get="{{ url_for(dash) }}" hx-on:click="navItemsStyleChange('{{ dash }}')" hx-swap="innerHTML" hx-target="#dash_main_window">
+    <div class="flex items-center p-2 space-x-3 rounded-md">
+        <i class="fa-solid {{ icon }}"></i>
+        <span>{{ text }}</span>
+</div></a>

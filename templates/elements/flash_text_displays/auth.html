@@ -1,0 +1,13 @@
+{% with messages = get_flashed_messages() %}
+    {% if messages %}  
+        <div class="space-y-1">
+            {% for message in messages %}
+                {% if 'success' in message|lower %}
+                    <div class="text-center bg-green-200 px-3 text-sm py-1 rounded-xl">{{ message }}</div>
+                {% else %}
+                    <div class="text-center bg-red-200 px-3 text-sm py-1 rounded-xl">{{ message }}</div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}

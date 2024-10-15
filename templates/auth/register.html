@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up | Repetio AI{% endblock %}
+
+{% block head %}
+{% endblock %}
+
+{% block body %}
+<body class="min-h-screen flex justify-center py-12">
+    <div class="flex flex-col justify-center px-6 py-12 lg:px-8 w-3/4 sm:max-w-md">
+        <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+            <img class="mx-auto h-10 w-auto" src="{{ url_for('static', filename='logo/simple.svg') }}" alt="repetio ai">   
+            <h1 class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">Create your account</h1>
+        </div>
+    
+        <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+            <form class="space-y-4" method="POST" action="{{ url_for('auth_register') }}">
+                <div>
+                    <label for="firstname" class="block text-sm px-2 font-medium leading-6 text-gray-900">First name</label>
+                    <input id="firstname" name="firstname" type="text" autocomplete="given-name" required value="{{ input_value_firstname }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                </div>
+                <div>
+                    <label for="lastname" class="block text-sm px-2 font-medium leading-6 text-gray-900">Last name</label>
+                    <input id="lastname" name="lastname" type="text" autocomplete="family-name" required value="{{ input_value_lastname }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                </div>
+                <div>
+                    <label for="email" class="block text-sm px-2 font-medium leading-6 text-gray-900">Email address</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required value="{{ input_value_email }}" class="block w-full mt-2 rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                </div>
+
+                <label class="flex items-center gap-3 p-2 cursor-pointer">
+                    <input type="checkbox" name="legal_consent" required>
+                    <span class="text-sm">
+                        I confirm that I have read and agree to the 
+                        <a href="https://legal.repetioai.com/terms" target="_blank" class="underline">Terms and Conditions</a>, 
+                        <a href="https://legal.repetioai.com/privacy" target="_blank" class="underline">Privacy Policy</a>, and 
+                        <a href="https://legal.repetioai.com/cookies" target="_blank" class="underline">Cookies Policy</a>.
+                    </span>
+                </label>
+                
+                {% include 'elements/flash_text_displays/auth.html' with context %}
+                {% include 'elements/captcha/floating.html' with context %}
+                <div>
+                    <button type="submit" class="flex w-full justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Sign up</button>
+                </div>
+            </form>
+    
+            <p class="mt-10 text-center text-sm text-gray-500">
+                Already a member?
+                <a href="{{ url_for('auth_login')}}" class="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Sign in</a>
+            </p>
+        </div>
+    </div>
+    {% include 'elements/footer/bottom_right_legal_links.html' with context %}
+</body>
+{% endblock %}

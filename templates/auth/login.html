@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | Repetio AI{% endblock %}
+
+{% block head %}{% endblock %}
+
+
+{% block body %}
+<body class="min-h-screen flex justify-center py-12">
+    <div class="flex flex-col justify-center px-6 py-12 lg:px-8 w-3/4 sm:max-w-md">
+        <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+            <img class="mx-auto h-10 w-auto" src="{{ url_for('static', filename='logo/simple.svg') }}" alt="repetio ai">   
+            <h1 class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">Sign in to your account</h1>
+        </div>
+    
+        <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+            <form class="space-y-6" method="POST" action="{{ url_for('auth_login') }}">
+                <div>
+                    <label for="email" class="block text-sm px-2 font-medium leading-6 text-gray-900">Email address</label>
+                    <div class="mt-2">
+                        <input id="email" name="email" type="email" autocomplete="email" required class="block w-full rounded-2xl border-0 px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                    </div>
+                </div>
+
+                <input type="hidden" id="timezone" name="timezone">
+                {% include 'elements/flash_text_displays/auth.html' with context %}
+                {% include 'elements/captcha/floating.html' with context %}
+                
+                <div>
+                    <button type="submit" class="flex w-full justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Sign in</button>
+                </div>
+            </form>
+    
+            <p class="mt-10 text-center text-sm text-gray-500">
+                Not a member?
+                <a href="{{ url_for('auth_register')}}" class="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Start a 14 day free trial</a>
+            </p>
+        </div>
+    </div>
+
+    {% include 'elements/footer/bottom_right_legal_links.html' with context %}
+    
+    <!--Adds the client-browser time zone to the form input-->
+    <script> 
+        document.addEventListener('DOMContentLoaded', function() {
+            var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById('timezone').value = timezone;
+        });
+    </script>
+</body>
+{% endblock %}

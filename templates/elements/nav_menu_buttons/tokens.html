@@ -1,0 +1,45 @@
+
+<div class="flex h-16 w-full mb-8 gap-1 justify-between">    
+    <a  
+        id="dash_tokens" 
+        class="nav-item w-full" 
+        hx-get="{{ url_for('dash_tokens')}}" 
+        hx-on:click="navItemsStyleChange('dash_tokens')" 
+        hx-swap="innerHTML" 
+        hx-target="#dash_main_window"
+        hx-indicator="none"
+    >
+        <div id="token_text_container" class="h-full w-full flex items-center justify-between gap-1">
+            <div><span id="token_text" class="font-bold">200k / 200k</span><br><span>Tokens left</span></div>  
+        </div>
+        <div id="spinner-tokens" class="htmx-indicator w-full">
+            <div class="w-full flex justify-center items-center">
+                <img class="h-[20px]" src="{{ url_for('static', filename='spinners/puff-dark.svg') }}">
+            </div>
+        </div>
+    </a>
+    <div class="h-full w-[30px] flex items-center justify-center">
+        <div 
+            id="token_refresh_button"
+            class="h-[30px] w-[30px] flex items-center justify-center rounded-md hover:bg-gray-300 cursor-pointer"
+            hx-get="{{ url_for('comp_token_count') }}"
+            hx-trigger="click, load"
+            hx-target="#token_text"
+            hx-indicator="#spinner-tokens"
+        ><i class="fa-solid fa-rotate-right"></i></div> 
+    </div>
+</div>
+
+<script>
+    document.addEventListener('htmx:configRequest', function(event) {
+        if (event.target.id === 'token_refresh_button') {
+            document.getElementById('token_text_container').style.display = 'none';
+        }
+    });
+
+    document.addEventListener('htmx:afterOnLoad', function(event) {
+        if (event.target.id === 'token_refresh_button') {
+            document.getElementById('token_text_container').style.display = '';
+        }
+    });
+</script>

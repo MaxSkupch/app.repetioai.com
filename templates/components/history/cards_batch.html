@@ -1,0 +1,58 @@
+<div class="w-full "></div>
+    {% for request in requests_list %}
+        <div class="w-full min-w-[300px] bg-white flex flex-col flex-none gap-4 rounded-2xl py-6 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300 whitespace-nowrap">
+            <div class="flex items-center mb-2"> 
+                <h2 class="text-2xl font-semibold">{{ request['created_at_date'] }}</h2> 
+                <div class="ml-3 bg-indigo-100 text-lg font-medium rounded-2xl px-2 py-0.5">{{ request['created_at_time'] }}</div>
+            </div>
+            
+            <div class="flex flex-wrap justify-between gap-4">
+                <div class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1rem)] bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                    <div class="text-2xl font-semibold">{{ request['prompt_amount'] }} <span class="text-xs font-normal">Prompts</span></div>
+                    <div class="text-sm font-semibold text-indigo-600">TOTAL</div>
+                </div>
+                <div class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1rem)] bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                    <div class="text-2xl font-semibold">{{ request['tokens_used_prompts'] }} <span class="text-xs font-normal">Tokens</span></div>
+                    <div class="text-sm font-semibold text-indigo-600">FOR PROMPTS</div>
+                </div>
+                <div class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1rem)] bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                    <div class="text-2xl font-semibold">{{ request['tokens_used_responses'] }} <span class="text-xs font-normal">Tokens</span></div>
+                    <div class="text-sm font-semibold text-indigo-600">FOR RESPONSES</div>
+                </div>
+                <div class="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1rem)] bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                    <div class="text-2xl font-semibold">{{ request['tokens_used_total'] }} <span class="text-xs font-normal">Tokens</span></div>
+                    <div class="text-sm font-semibold text-indigo-600">TOTAL</div>
+                </div>
+            </div>
+
+            <div class="w-foll bg-white flex flex-col rounded-2xl p-2 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                <div class="w-full py-3 px-3 font-semibold text-lg">
+                    Main prompt
+                </div>
+                <div class="w-full py-3 px-5 bg-indigo-100 rounded-xl text-indigo-600 whitespace-normal break-words">
+                    <p>{{ request['display_text'] }}</p>
+                </div>
+            </div>
+
+            <div class="mt-2 flex space-x-3">
+                <a href="{{ request['download_url'] }}" class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                >Download Results</a>      
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if has_more %}
+    <div 
+        hx-get="{{ url_for('comp_history_cards_batch', n=n)}}" 
+        hx-trigger="intersect" 
+        hx-swap="outerHTML" 
+        hx-indicator="#spinner-more" 
+        class="h-[100px] w-full flex justify-center"
+    >
+        <img id="spinner-more" class="htmx-indicator h-[50px] mt-5" src="{{ url_for('static', filename='spinners/tail-spin-dark.svg') }}">
+    </div>
+{% else %}
+    <div class="w-full text-center mt-5">No more requests exist in your history</div>
+{% endif %}
+

@@ -1,0 +1,115 @@
+<h2 class="text-2xl font-semibold">Confirm your inputs</h2>
+
+<div class="divide-y">
+
+    <div class="pt-6 space-y-5 pb-8">
+        <p>Confirm all your inputs before processing them. A rough estimate of how many tokens your request will use can be viewed here.</p>
+
+        <div class="flex items-center justify-between gap-4 whitespace-nowrap">
+            <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                <div class="text-2xl font-semibold">{{ prompt_token_count }} <span class="text-xs font-normal">Tokens</span></div>
+                <div class="text-sm font-semibold text-indigo-600">FOR PROMPTS</div>
+                <div class="text-xs font-light ">(Exact amount)</div>
+            </div>
+            <i class="fa-solid fa-plus"></i>
+            <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                <div class="text-2xl font-semibold">{{ response_token_count }} <span class="text-xs font-normal">Tokens</span></div>
+                <div class="text-sm font-semibold text-indigo-600">FOR RESPONSES</div>
+                <div class="text-xs font-light">(Rough estimate)</div>
+            </div>
+            <i class="fa-solid fa-equals"></i>
+            <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                <div class="text-2xl font-semibold">{{ total_token_count }} <span class="text-xs font-normal">Tokens</span></div>
+                <div class="text-sm font-semibold text-indigo-600">ESTIMATED TOTAL</div>
+                <div class="text-xs font-light ">(Rough estimate)</div>
+            </div>
+        </div>
+
+        <div class="flex gap-3 justify-between items-center">
+            <a 
+                hx-get="{{ url_for('comp_compose_var_prompt', n=(n-1) )}}"
+                hx-target="#compose-input-container"
+                hx-swap="innerHTML"
+                class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                hx-disabled-elt="this"
+            >
+                <img class="htmx-indicator h-[20px]" src="{{ url_for('static', filename='spinners/puff.svg') }}" hx-indicator>
+                <i class="fa-solid fa-chevron-left"></i>
+                <p>Back</p>
+            </a>
+
+            <a 
+                hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
+                hx-target="#compose-input-container"
+                hx-swap="innerHTML"
+                class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
+                hx-confirm="Are you sure you wish to delete all inputs? The base prompt field and any variable values will be cleared by this."
+            >Cancel and clear inputs</a>
+
+            <a 
+                hx-get="{{ url_for('comp_compose_var_prompt_process_start')}}"
+                hx-target="#compose-input-container"
+                class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                hx-disabled-elt="this"
+
+            >
+                <p>Start the process</p>
+                <i class="fa-solid fa-play"></i>
+                <img class="htmx-indicator h-[20px]" src="{{ url_for('static', filename='spinners/puff.svg') }}">
+            </a>
+        </div>
+
+    </div>
+
+    <div class="py-8 space-y-2 pb-4">
+        <h2 class="text-xl font-semibold">Review your inputs</h2>
+        <p>Take a look at your inputs before processing them.</p>
+        <div class="pt-6 pb-6 flex flex-col gap-2">
+
+            <div class="w-foll bg-white flex flex-col rounded-2xl p-2 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                <div class="w-full py-3 px-3 font-semibold text-lg">
+                    Base prompt
+                </div>
+                <div class="w-full py-3 px-5 bg-indigo-100 rounded-xl text-indigo-600">
+                    {% for entry in base_text_list %}
+                        {% if loop.index is even %}
+                            <span class="bg-indigo-200 rounded-full px-3 py-0.5 font-semibold">{{ entry }}</span>
+                        {% else %}
+                            {{ entry }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex flex-wrap max-w-full gap-2 overflow-x-auto white-space-nowrap">
+                {% for variable in variable_list %}
+                    <div class="bg-white flex flex-col rounded-2xl px-2 pt-2 pb-4 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+                        <div class="bg-indigo-200 rounded-full px-3 py-0.5 font-semibold text-indigo-600 mb-2 text-center"
+                        > {{ variable[0] }} </div>
+                        {% for value in variable[1] %}
+                            <div class="px-3"> {{ value }} </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}             
+
+            </div>
+        </div>
+    </div>
+
+    <div class="py-8 space-y-2 pb-4">
+        {% if prompts_amount > 1 %}
+            <h2 class="text-xl font-semibold">All {{prompts_amount}} prompts</h2>
+        {% elif  prompts_amount == 1 %}
+            <h2 class="text-xl font-semibold">Your single prompt</h2>
+        {% else %}
+            <h2 class="text-xl font-semibold">You created no prompts</h2>
+        {% endif %}
+        <p>View every single prompt that will be processed.</p>
+        <div class="pt-6 flex flex-col gap-2">
+            {% for prompt in prompts_list %}
+                <div class="rounded-2xl bg-indigo-100 px-4 py-2 text-indigo-600">{{prompt}}</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+

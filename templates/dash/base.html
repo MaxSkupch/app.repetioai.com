@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Repetio AI{% endblock %}
+
+
+{% block head %}
+<script src="https://kit.fontawesome.com/5d2f2b8369.js" crossorigin="anonymous"></script>
+
+<!-- Styles for Nav Items. Twind does not work here beacause JS is toggeling classes wich Twind seems to not support-->
+<style>
+    .nav-item {
+        background-color: transparent;
+        padding: 8px 16px;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .nav-item:hover {
+        background-color: #d1d5db;
+    }
+    .nav-item.selected {
+        background-color: #eef2ff;
+    }
+</style>
+
+{% endblock %}
+
+
+{% block body %}
+<body class="min-h-screen flex">
+    <div class="min-h-screen p-3 space-y-2 w-56 flex flex-col justify-between">
+
+        <div class="flex items-center p-2 space-x-4">
+            <img class="mx-auto h-10 w-auto" src="{{ url_for('static', filename='logo/simple.svg') }}" alt="repetio ai">   
+        </div>
+
+        <div class="pt-2 pb-4 space-y-1 text-sm">
+            {% include 'elements/nav_menu_buttons/tokens.html'%}
+
+            {% set text, dash, icon = 'Compose', 'dash_compose', 'fa-plus' %}
+            {% include 'elements/nav_menu_buttons/regular.html'%}
+
+            {% set text, dash, icon = 'History', 'dash_history', 'fa-list' %}
+            {% include 'elements/nav_menu_buttons/regular.html'%}
+
+            {% set text, dash, icon = 'Help', 'dash_help', 'fa-life-ring' %}
+            {% include 'elements/nav_menu_buttons/regular.html'%}
+        </div>
+
+        <div class="pt-4 pb-2 space-y-1 text-sm">
+            {% set text, dash, icon = 'Account', 'dash_account', 'fa-user' %}
+            {% include 'elements/nav_menu_buttons/regular.html'%}
+
+            {% include 'elements/nav_menu_buttons/logout.html'%}
+        </div>
+    </div>
+
+    {# Window Container #}
+    <div class="h-screen w-full max-w-full p-1.5">
+        <div id="dash_main_window" class="h-full w-full max-w-full bg-gray-100 rounded-lg">
+            <div hx-get="{{ url_for(current_window) }}" hx-swap="outerHTML" hx-trigger="load"></div>
+        </div>
+    </div>
+
+
+    <script>
+        function navItemsStyleChange(navItemId) {
+            const navItemIds = ['dash_tokens', 'dash_compose', 'dash_history', 'dash_help', 'dash_account'];
+    
+            navItemIds.forEach(id => {
+                const navItem = document.getElementById(id);
+                if (id === navItemId) {
+                    navItem.classList.add('selected');
+                } else {
+                    navItem.classList.remove('selected');
+                }
+            });
+        }
+    
+        document.addEventListener("DOMContentLoaded", function() {
+            const currentNavItem = "{{ current_window }}";
+            navItemsStyleChange(currentNavItem);
+        });
+    </script>
+{% endblock %}
