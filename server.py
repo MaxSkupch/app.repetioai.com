@@ -17,7 +17,7 @@ import json
 import csv
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import requests
 import os
@@ -101,7 +101,7 @@ login_manager.login_view = 'auth_login'
 
 lemonsqueezy_webhook_secret = os.getenv('LEMONSQUEEZY_WEBHOOK_SECRET')
 lemonsqueezy_store_id       = os.getenv('LEMONSQUEEZY_STORE_ID')
-lemonsqueezy_store_domain   = os.getenv('LEMONSQUEEZY_STORE_DOMAIN')
+LEMONSQUEEZY_STORE_DOMAIN   = os.getenv('LEMONSQUEEZY_STORE_DOMAIN')
 
  
 
@@ -129,24 +129,24 @@ url_serializer                      = URLSafeTimedSerializer(os.getenv('URL_SERI
 ### Define DB Schema / Classes
 
 class User(UserMixin, db.Model):
-    id                          = db.Column(db.Integer, primary_key=True)
-    public_client_reference_id  = db.Column(db.String(26), unique=True, nullable=False) # used for lemon squeezy
+    id                  = db.Column(db.Integer, primary_key=True) # Primary ID, not used for anything outside the db
+    public_reference_id = db.Column(db.String(26), unique=True, nullable=False) # Used for the Lemon Squeezy customer_id and all other future integrations
 
-    first_name                  = db.Column(db.String(60), nullable=True)
-    last_name                   = db.Column(db.String(60), nullable=True)
-    email                       = db.Column(db.String(150), unique=True, nullable=False, index=True)
+    first_name          = db.Column(db.String(60), nullable=True) # Not realy used for anything. Only there so I may be able to send custom Email in the future
+    last_name           = db.Column(db.String(60), nullable=True) # Not realy used for anything. Only there so I may be able to send custom Email in the future 
+    email               = db.Column(db.String(150), unique=True, nullable=False, index=True) # Secondary ID. Used for all Auth
 
-    timezone                    = db.Column(db.String(50), default='UTC')
-    created_at                  = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    email_verified              = db.Column(db.Boolean, default=False)
-    role                        = db.Column(db.String(10), default='user') #user, tester, unlimited 
+    timezone            = db.Column(db.String(50), default='UTC') # Used for 
+    created_at          = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) # Just nice to have
+    is_new              = db.Column(db.Boolean, default=True) # Only used to differanciate accounts that have a verified email and logged in from those that have not
+    role                = db.Column(db.String(10), default='user') #user, tester, unlimited 
 
-    account_active              = db.Column(db.Boolean, default=False) # TODO Change default
-    free_trial_active           = db.Column(db.Boolean, default=True)    
+    account_active      = db.Column(db.Boolean, default=False) # TODO Change default # Used to block the login for Users
 
-    token_balance               = db.Column(db.Integer, nullable=False, default=free_trail_token_allowance) 
-    subscription                = db.relationship('UserSubscription', back_populates='user', cascade='all, delete-orphan')
-    requests                    = db.relationship('Request', back_populates='user', cascade='all, delete-orphan')
+    token_balance       = db.Column(db.Integer, nullable=False, default=free_trail_token_allowance) # TODO Maybe redo this?
+    last_balance_reset  = db.Column(db.DateTime(timezone=True), nullable=True)
+    subscription        = db.relationship('UserSubscription', back_populates='user', cascade='all, delete-orphan')
+    requests            = db.relationship('Request', back_populates='user', cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -155,22 +155,24 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class Subscription(db.Model):
-    id              = db.Column(db.Integer, primary_key=True)
-    ls_variant_id   = db.Column(db.Integer, nullable=True)
-    type            = db.Column(db.String(50), nullable=False, unique=True)
-    display_name    = db.Column(db.String(50), nullable=False)
-    monthly_cost    = db.Column(db.Integer, nullable=False)
-    included_tokens = db.Column(db.Integer, nullable=False)
+    id                      = db.Column(db.Integer, primary_key=True) #  Primary ID, not used for anything outside the db
+    public_reference_id     = db.Column(db.Integer, nullable=True) # Used for the Lemon Squeezy variant_id and all other future integrations
+    display_name            = db.Column(db.String(50), nullable=False) # Name of the Subscription show to the User
+    monthly_cost            = db.Column(db.Integer, nullable=False) # Monthly cost of the Subscription in USD cent
+    included_tokens         = db.Column(db.Integer, nullable=False) # Amount of tokens the Subscriptions includes per month
 
     user_subscriptions = db.relationship('UserSubscription', back_populates='subscription', cascade='all, delete-orphan')
 
 class UserSubscription(db.Model):
-    user_id         = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
-    subscription_id = db.Column(db.Integer, db.ForeignKey('subscription.id'), nullable=False)
+    id              = db.Column(db.Integer, primary_key=True)  # Primary ID of the User Subscription. User can have multiple ones but only one active
+    user_id         = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # User the Subscription belongs to
+    subscription_id = db.Column(db.Integer, db.ForeignKey('subscription.id'), nullable=False) # Subscription the User made
 
-    is_active       = db.Column(db.Boolean, default=True)
+    created_at      = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) # Just nice to have
+    ended_at        = db.Column(db.DateTime(timezone=True), nullable=True) # Filled in once the subscription ended, otherwise null
+    active          = db.Column(db.Boolean, default=True) # One user can have one active subscription
+
     status          = db.Column(db.String(10), nullable=False)
-
     payment_time    = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     reset_time      = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -179,18 +181,17 @@ class UserSubscription(db.Model):
 
 
 class Request(db.Model):    
-    id                      = db.Column(db.String(26), primary_key=True, default=lambda: str(ulid.new()))
-    user_id                 = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    id                      = db.Column(db.String(26), primary_key=True, default=lambda: str(ulid.new())) # Primary key of the Request
+    user_id                 = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # User that the request belongs to 
 
-    tokens_used_total       = db.Column(db.Integer, nullable=True)
-    tokens_used_prompts     = db.Column(db.Integer, nullable=True)
-    tokens_used_responses   = db.Column(db.Integer, nullable=True)
+    tokens_used_total       = db.Column(db.Integer, nullable=True) # General Info
+    tokens_used_prompts     = db.Column(db.Integer, nullable=True) # General Info
+    tokens_used_responses   = db.Column(db.Integer, nullable=True) # General Info
+    prompt_amount           = db.Column(db.Integer, nullable=True) # General Info
 
-    prompt_amount           = db.Column(db.Integer, nullable=True)
-
-    display_text            = db.Column(db.String, nullable=True)
-    created_at              = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    data                    = db.Column(JSON, nullable=False) ### have a type and version value at the top layer # {'type': 'variable_sent', 'version': '0', 'data':{...}}
+    display_text            = db.Column(db.String, nullable=True) # Description the user is shown to know what the data is about
+    created_at              = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) # Date the DB Entry is made (rougly equals date of completion of the Request and treatet as such)
+    data                    = db.Column(JSON, nullable=False) #Actual Results Data of the request # {'type': 'variable_sent', 'version': '0', 'data':{...}}
 
     user                    = db.relationship('User', back_populates='requests')
 
@@ -203,10 +204,9 @@ def load_user(user_id):
 
 
 
-# Ensure database schema exists
-with app.app_context():
-    db.create_all()
 
+with app.app_context():
+    db.create_all() # Ensure database schema exists
 
 
 
@@ -220,8 +220,8 @@ with app.app_context():
 def ls_variant_checkout(user_email, reference_id, variant_id):
     encoded_email = quote(user_email)
     #TODO Probably use Hosted domain
-    return f'https://{lemonsqueezy_store_domain}/checkout/buy/{variant_id}?checkout[email]={encoded_email}&checkout[name]={current_user.first_name} {current_user.last_name}&checkout[custom][reference_id]={reference_id}'
-    return f"{stripe_customer_portal_url}?prefilled_email={encoded_email}"
+    return f'https://{LEMONSQUEEZY_STORE_DOMAIN}/checkout/buy/{variant_id}?checkout[email]={encoded_email}&checkout[name]={current_user.first_name} {current_user.last_name}&checkout[custom][reference_id]={reference_id}'
+    return f"{ls_customer_portal_url}?prefilled_email={encoded_email}"
 
 def is_regex_valid_email(email: str):
     email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
@@ -409,7 +409,7 @@ async def process_var_prompt(index_values_prompt_list: list):
 
 ### Routes 
 
-## Dashboard 
+## Dashboard(s)
 
 @app.route('/')
 @login_required
@@ -421,9 +421,6 @@ def dash_base():
     )
 
 # Dashboard Windows (served via HTMX)
-
-##### Ad a redirect if user has no sub for all except account?
-##### Or just rander an emty screen with "You need a Subscription to acces this page"
 
 @app.route('/dash/window/tokens')
 @login_required
@@ -484,20 +481,8 @@ def dash_account():
         last_name           = current_user.last_name,
         email               = current_user.email,
         url_encoded_email   = quote(current_user.email),
-        #stripe_customer_portal_url = unique_stripe_customer_portal_url(current_user.email) # TODO
+        ls_customer_portal_url = f'https://{LEMONSQUEEZY_STORE_DOMAIN}'
     )
-
-
-
-## Flash Screens
-
-@app.route('/flash_screen/subscription_succes')
-@login_required
-def flash_screen_subscription_succes():
-    ...
-
-
-
 
 
 
@@ -544,7 +529,20 @@ def comp_token_count():
     return f'{tokens_left} / {token_allowance}'
 
 
+## Token Page Components
 
+@app.route('/component/subscription_status')
+@login_required
+def comp_token_page_subscription_status():
+    user_subscription = UserSubscription.query.filter_by(user_id=current_user.id, active=True).first()
+    
+    if not user_subscription: 
+        print('Failed to find active UserSubscription for Tokens Page')
+        return 'Error: No active Subscription'
+    
+    return render_template(dssdgsdg name = reset time =....)
+
+    
 
 
 ## Compose Page Components 
@@ -874,6 +872,50 @@ def comp_history_cards_batch(n):
     )
 
 
+# Token Page
+
+@app.route('/component/token_usage_history/cards_batch/<n>')
+@login_required
+def comp_token_history_cards_batch(n):
+    try: n = int(n)
+    except: abort(404)
+
+    try:
+        limit = 10
+        offset = (n - 1) * 10
+        requests_query = Request.query.filter_by(user_id=current_user.id).order_by(Request.created_at.desc()).offset(offset).limit(limit).all() # TODO Make proper DB QUERY 
+
+        if not requests_query: return ""
+        
+        if len(requests_query) < 10:    has_more = False
+        else:                           has_more = True    
+
+        requests_list = [ # TODO Make proper List based on DB structure
+            {
+                'id':                       req.id,
+                'tokens_used_total':        req.tokens_used_total,
+                'tokens_used_prompts':      req.tokens_used_prompts,
+                'tokens_used_responses':    req.tokens_used_responses,
+                'display_text':             req.display_text,
+                'created_at_date':          req.created_at.astimezone(ZoneInfo(current_user.timezone)).strftime('%Y-%m-%d'),
+                'created_at_time':          req.created_at.astimezone(ZoneInfo(current_user.timezone)).strftime('%H:%M'),
+                'created_at_seconds':       req.created_at.astimezone(ZoneInfo(current_user.timezone)).strftime('%S'), 
+                'prompt_amount':            req.prompt_amount,
+                'download_url':             url_for('download', request_id=req.id),
+            }
+            for req in requests_query
+        ]
+
+    except Exception as e: 
+        print(e)
+        abort(500)
+
+    return render_template(
+        'components/history/cards_batch.html',
+        n = n+1,
+        requests_list = requests_list,
+        has_more=has_more,
+    )
 
 
 
@@ -948,18 +990,30 @@ def auth_verify_login(verification_token, encoded_timezone):
     
     user = User.query.filter_by(email=email).first()
     if user and user.account_active:
-        login_user(user)
 
-        if user.email_verified == False: user.email_verified = True
+        login_user(user)
         
         try: 
             timezone = unquote_plus(encoded_timezone)
-            _ = ZoneInfo(timezone)
+            timezone_object = ZoneInfo(timezone)
         except ZoneInfoNotFoundError: timezone = 'UTC'
         
         if timezone and timezone != user.timezone:
             user.timezone = timezone
             db.session.commit()
+
+        if user.is_new:
+
+            user_subscription = UserSubscription(
+                user_id         = user.id,
+                subscription_id = 1,
+                status          = 'active',
+                reset_time      = datetime.now(timezone_object) + timedelta(weeks=2),
+
+            )
+            db.session.add(user_subscription)
+            db.session.commit()
+            user.is_new = False
         
         return redirect(url_for('dash_base'))
     
@@ -1042,12 +1096,11 @@ def auth_register():
             register = False
 
         if register:
-
             user = User(
-                email                       = email, 
-                first_name                  = first_name, 
-                last_name                   = last_name, 
-                public_client_reference_id  = str(ulid.new())
+                email                = email, 
+                first_name           = first_name, 
+                last_name            = last_name, 
+                public_reference_id  = str(ulid.new())
             )
             db.session.add(user)
             db.session.commit()
@@ -1206,17 +1259,38 @@ def integrations_stripe_webhook():
     if a['test_mode'] == True: print(f'Event name: {event_name}\n\nPayload:\n{payload_json}')
 
     if   event_name == 'subscription_created': # Use for keeping status uptodate
+        
         #create new UserSubscription
         status = a['status'] 
-        'on_trial'  # Use with limited amount of tokens
-        'active'    # Regularly use Tokens
-        'paused'    # maybe not needed
-        'past_due'  # Deactivate Option to use
-        'cancelled' # Regularly use Tokens (maybe add a small banner saying "subscription ends on")
-        'expired'   # Deactivate Option to use
+
+        try:
+            user = User.query.filter_by(public_client_reference_id=a['customer_id']).first()
+
+
+            new_subscription = UserSubscription(
+                user_id=user.id,
+                subscription_id='subscription_type',  # Assuming you have a way to get subscription ID
+                status=status,
+                    # 'on_trial'    Use with limited amount of tokens
+                    # 'active'      Regularly use Tokens
+                    # 'paused'      maybe not needed
+                    # 'past_due'    Deactivate Option to use
+                    # 'cancelled'   Regularly use Tokens (maybe add a small banner saying "subscription ends on")
+                    # 'expired'     Deactivate Option to use
+                payment_time=datetime.now(timezone.utc)  # Set the payment time to now
+            )
+            db.session.add(new_subscription)
+            db.session.commit()
+            
+
+        except:
+            print(f"Error: User with email {a['customer_id']} not found")
+
+
 
         product_id = a['product_id']
         variant_id = a['variant_id'] 
+
 
     elif event_name == 'subscription_updated': # Use for keeping status uptodate
         print(' ')
@@ -1245,25 +1319,5 @@ def integrations_stripe_webhook():
 
 if __name__ == '__main__': app.run(debug=True, port=os.getenv("PORT", default=5000))
 
-
-
-# Next Step: 
-
-# Create DB based on ls
-# Create Pricing Table
-# Force User to make a subscription if not subscribbed / block app use
-# Update how tokens used gets stored in db (maybe live save to reddis then add to pg), also concidder keeping process running even if window is closed
-# Display tokens remaining to user on the left menu bar
-# do TODO 
-
-# Launch
-# Fix bugs if any apear
-# Create landing page
-# Market
-
-# use jinja2 server rendered components for buttons and similar stuff
-# De monolythise
-# For Compose add jump direct to step n bprogress bar for each variable & base input
-# Fill Help Page
 
 
