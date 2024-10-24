@@ -263,9 +263,48 @@ def tiktoken_count_tokens(content: str) -> int:
     token_count = len(encoding.encode(content))
     return token_count
 
-def token_int_to_string(count: int):
+def token_count_to_string(count: int):
     if count < 10_000:      return str(count)
     return re.sub(r"(?<=\d)(?=(\d{3})+$)", ".", str(count))
+
+def token_count_to_short_string(n):
+        if n < 0:   negative = True
+        else:       negative = False
+
+        n = abs(n)
+
+        if n >= 1_000_000_000:  
+            n = n / 1_000_000_000
+            suffixes = 'B'
+        if n >= 1_000_000:      
+            n = n / 1_000_000
+            suffixes = 'M'
+        if n >= 1_000:          
+            n = n / 1_000
+            suffixes = 'K'
+        if n >= 0:              
+            n = n
+
+        n = str(round(n, 2))[0:4]
+        if len(n) > 1 and n[-1] == '.': n = n[0:-1]
+
+        return f'{n}{suffixes}'
+
+def time_delta_to_string(time_delta):
+    if   time_delta.days > 0:               
+        time_string = f'{time_delta.days}'
+        unit_string = 'days'
+    elif time_delta.seconds >= 3600:
+        time_string = f'{time_delta.seconds // 3600}'
+        unit_string = 'hours'
+    elif time_delta.seconds >= 60:
+        time_string = f'{time_delta.seconds // 60}'
+        unit_string = 'minutes'
+    else:                                   
+        time_string = f'<1'
+        unit_string = 'minute'
+    return time_string, unit_string
+
 
 ## Main Functions for Prompt generation
 def process_var_prompt_base_input(input_text: str) -> tuple[list[str], list[str]]:
@@ -496,36 +535,8 @@ def dash_account():
 @app.route('/component/token_count')
 @login_required
 def comp_token_count():
-    # TODO Get from DB
-    tokens_left     = 237_979 #random.randint(1, 10_000_000_000)
-    token_allowance = 400_000 #random.randint(tokens_left, 10_000_000_000)
-
-    def stringify_tokens(n):
-        if n < 0:   negative = True
-        else:       negative = False
-
-        n = abs(n)
-
-        if n >= 1_000_000_000:  
-            n = n / 1_000_000_000
-            suffixes = 'B'
-        if n >= 1_000_000:      
-            n = n / 1_000_000
-            suffixes = 'M'
-        if n >= 1_000:          
-            n = n / 1_000
-            suffixes = 'K'
-        if n >= 0:              
-            n = n
-
-        n = str(round(n, 2))[0:4]
-        if len(n) > 1 and n[-1] == '.': n = n[0:-1]
-
-        return f'{n}{suffixes}'
-        
-    tokens_left     = stringify_tokens(tokens_left)     
-    token_allowance = stringify_tokens(token_allowance) 
-    
+    tokens_left     = token_count_to_short_string(current_user.token_balance)
+    token_allowance = token_count_to_short_string(UserSubscription.query.filter_by(user_id=current_user.id, active=True).first().subscription.included_tokens) 
     return f'{tokens_left} / {token_allowance}'
 
 
@@ -540,7 +551,18 @@ def comp_token_page_subscription_status():
         print('Failed to find active UserSubscription for Tokens Page')
         return 'Error: No active Subscription'
     
-    return 'a' # render_template(dssdgsdg name = reset time =....)
+    subscription_reset_datetime = user_subscription.reset_time.astimezone(ZoneInfo(current_user.timezone))
+    current_time                = datetime.now(ZoneInfo(current_user.timezone))
+    subscription_reset_delta    = subscription_reset_datetime - current_time
+
+    return render_template(
+        'components/tokens/current_subscription.html',
+        subscription_display_name       = user_subscription.subscription.display_name,
+        subscription_reset_datetime     = subscription_reset_datetime.strftime('%Y-%m-%d %H:%M'),
+        subscription_token_allowance    = token_count_to_string(user_subscription.subscription.included_tokens),
+        user_token_balance              = token_count_to_string(user_subscription.user.token_balance),
+        subscription_reset_delta        = time_delta_to_string(subscription_reset_delta)
+    )
 
     
 
@@ -656,9 +678,9 @@ def comp_compose_var_prompt_confirm():
     return render_template(
         'components/compose/var_prompt/confirm_input.html',
         n                       = session['current_compose_step'],
-        prompt_token_count      = token_int_to_string(prompt_token_count),
-        response_token_count    = token_int_to_string(response_token_count),
-        total_token_count       = token_int_to_string(total_token_count),
+        prompt_token_count      = token_count_to_string(prompt_token_count),
+        response_token_count    = token_count_to_string(response_token_count),
+        total_token_count       = token_count_to_string(total_token_count),
         base_text_list          = base_text_list,
         variable_list           = variable_name_and_values,
         prompts_list            = prompts_list,

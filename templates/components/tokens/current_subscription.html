@@ -1,0 +1,30 @@
+<div class="w-full min-w-[300px] bg-white flex flex-col flex-none gap-4 rounded-2xl py-6 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300 whitespace-nowrap">
+    <div class="flex items-center mb-2"> 
+        <h2 class="text-2xl font-semibold">{{ subscription_display_name }}</h2> 
+        <div class="ml-3 bg-indigo-100 text-lg font-medium rounded-2xl px-2 py-0.5"> Resets: {{ subscription_reset_datetime }}</div>
+    </div>
+    
+    <div class="flex items-center justify-between gap-4 whitespace-nowrap">
+        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+            <div class="text-2xl font-semibold">{{ subscription_token_allowance }} <span class="text-xs font-normal">Tokens</span></div>
+            <div class="text-sm font-semibold text-indigo-600">MONTHLY ALLOWANCE</div>
+        </div>
+        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+            <div class="text-2xl font-semibold">{{ user_token_balance }} <span class="text-xs font-normal">Tokens</span></div>
+            <div class="text-sm font-semibold text-indigo-600">LEFT UNTIL RESET</div>
+        </div>
+        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
+            <div class="text-2xl font-semibold">{{ subscription_reset_delta[0] }} <span class="text-xs font-normal">{{ subscription_reset_delta[1] }}</span></div>
+            <div class="text-sm font-semibold text-indigo-600">LEFT UNTIL RESET</div>
+        </div>
+    </div>
+
+    <div class="mt-2 flex space-x-3 gap-2">
+        <a href="{{ request['download_url'] }}" class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        >Change Plan</a>   
+        <a href="{{ request['download_url'] }}" class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        >Manage Billing</a>
+    </div>
+
+
+</div>

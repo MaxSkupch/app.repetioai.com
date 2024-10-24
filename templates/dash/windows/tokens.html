@@ -2,11 +2,9 @@
 
 {% block content %}
 
-
-
 <section class="max-w-full w-full px-4 py-8 md:p-8">
     <div class="pt-6 space-y-5 pb-8">
-        <p>Confirm all your inputs before processing them. A rough estimate of how many tokens your request will use can be viewed here.</p>
+        <div hx-get="{{ url_for('comp_token_page_subscription_status')}}" hx-trigger="load" hx-swap="outerHTML"></div>
 
         <div class="flex items-center justify-between gap-4 whitespace-nowrap">
             <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
