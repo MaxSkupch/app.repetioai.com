@@ -1,42 +1,3 @@
-"""
-All Pages and functions related to the compose Pages
-
-
-ValKey format:
-User Specific:      user({id}):{category}:{subcategory}... -> value
-Global:             global:{category}:{subcategory}... -> value 
-
-vk.set('global:limits:openai:tpm', 0)
-vk.set('global:limits:openai:rpm', 0)
-vk.set('global:limits:openai:reset_time', datetime.now().timestamp())
-
-
-
-vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_total',      response.usage.total_tokens)
-vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_prompts',    response.usage.prompt_tokens)
-vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_response',   response.usage.completion_tokens)
-vk.incrby(f'global:user({current_user.id}):request_counts:prompts_completed',      1)
-
-
-
-response_data = {"response": "API response here"}  # Example API response
-redis_client.hset(f"responses:{session_id}", index, json.dumps(response_data))
-
-
-Get Data---
-
-# Retrieve all responses for the session
-responses = redis_client.hgetall(f"responses:{session_id}")
-
-# Sort responses by index (keys)
-sorted_responses = sorted(responses.items(), key=lambda x: int(x[0]))
-
-# Convert from Redis format (bytes) to usable Python objects
-ordered_responses = [json.loads(value.decode()) for _, value in sorted_responses]
-"""
-
-
-import asyncio
 import csv
 import json
 import os
@@ -66,251 +27,6 @@ from app.values     import openai_model_name, openai_model_limit_rpm, openai_mod
 #                    'variable_values':  [], # list of lists of variable-values
 #                }
 
-"""
-Setting up the Redis / Valkey interactions
-
-Always one save- and one retrive & delete function per data item
-"""
-
-# Composition data
-
-def set_text_segemnts(text_segments: list):
-    current_app.vk.set(f"user({current_user.id}):current_composition:input:text_segemnts", text_segments)
-
-def get_del_text_segments():
-    result = current_app.vk.get(f"user({current_user.id}):current_composition:input:text_segments")
-    current_app.vk.delete(f"user({current_user.id}):current_composition:input:text_segments")
-    return result
-
-
-def set_variable_names(variable_names: list):
-    current_app.vk.set(f"user({current_user.id}):current_composition:input:variable_name", variable_names)
-
-def get_del_variable_names():
-    result = current_app.vk.get(f"user({current_user.id}):current_composition:input:variable_name")
-    current_app.vk.delete(f"user({current_user.id}):current_composition:input:variabl_name")
-    return result
-
-def get_nth_variable_name(n):
-    return current_app.vk.get(f"user({current_user.id}):current_composition:input:variable_name")[n]
-   
-
-
-def set_variable(vavariable_name: str, vavariable_values: list):
-    current_app.vk.hset(f"user({current_user.id}):current_composition:input:variables", vavariable_name, json.dumps(vavariable_values))
-
-def get_del_variables():
-    result = current_app.vk.hgetall(f"user({current_user.id}):current_composition:input:variables")
-    result = {key: json.loads(value) for key, value in result.items()}
-    current_app.vk.delete(f"user({current_user.id}):current_composition:input:variables")
-    return result
-
-
-
-def set_prompt(prompts: list):  # Should be an ordered list
-    for i, prompt in enumerate(prompts):
-        current_app.vk.hset(f"user({current_user.id}):current_composition:prompts", i, prompt)
-
-def get_del_prompts():
-    result = current_app.vk.hgetall(f"user({current_user.id}):current_composition:prompts")
-    current_app.vk.delete(f"user({current_user.id}):current_composition:prompts")
-    return result
-
-
-def set_response(index: int, response: str):
-    current_app.vk.hset(f"user({current_user.id}):current_composition:responses", index, response)
-
-def get_del_responses():
-    result = current_app.vk.hgetall(f"user({current_user.id}):current_composition:responses")
-    current_app.vk.delete(f"user({current_user.id}):current_composition:responses")
-    return result
-
-
-
-# Composition Meta Data
-
-def init_comp_meta_data(prompts_amount):
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "tokens_used_total",      0)
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "tokens_used_prompts",    0)
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "tokens_used_response",   0)
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "prompts_completed",      0)
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "prompts_amount",         prompts_amount)
-    current_app.vk.hset(f"user({current_user.id}):current_composition:meta_data", "start_progress_stream",  1)
-
-def incr_comp_meta_data(tokens_used_total: int, tokens_used_prompts: int, tokens_used_response):
-    current_app.vk.hincrby(f"user({current_user.id}):current_composition:meta_data", "tokens_used_total",       tokens_used_total)
-    current_app.vk.hincrby(f"user({current_user.id}):current_composition:meta_data", "tokens_used_prompts",     tokens_used_prompts)
-    current_app.vk.hincrby(f"user({current_user.id}):current_composition:meta_data", "tokens_used_response",    tokens_used_response)
-    current_app.vk.hincrby(f"user({current_user.id}):current_composition:meta_data", "prompts_completed",       1)
-
-def get_comp_meta_data():
-    tokens_used_total       = current_app.vk.hget(f"user({current_user.id}):current_composition:meta_data", "tokens_used_total", 0)
-    tokens_used_prompts     = current_app.vk.hget(f"user({current_user.id}):current_composition:meta_data", "tokens_used_prompts", 0)
-    tokens_used_responses   = current_app.vk.hget(f"user({current_user.id}):current_composition:meta_data", "tokens_used_response", 0)
-    return tokens_used_total, tokens_used_prompts, tokens_used_responses
-
-def del_comp_meta_data():
-    current_app.vk.delete(f"user({current_user.id}):current_composition:meta_data")
-
-
-# Global API Use Data
-
-def incr_global_api_use_data(tpm):
-    """ INCRBY creates the key-value pair if it does not exist so no new one needs to be created"""
-    current_app.vk.hincrby("global:limits:meta_data", "tpm", tpm)
-    current_app.vk.hincrby("global:limits:meta_data", "rpm", 1)
-
-def reset_global_api_use_data():
-    current_app.vk.hset("global:limits:meta_data", "tpm", 0)
-    current_app.vk.hset("global:limits:meta_data", "rpm", 0)
-    current_app.vk.hset("global:limits:meta_data", "reset_time", datetime.now().timestamp())
-
-def get_global_api_use_data(key):
-    return current_app.vk.hget("global:limits:meta_data", key)
-
-
-def get_auto_save_inputs(n: int) -> str:
-    if 'auto_save_inputs' in session and n in session['auto_save_inputs']:
-        return session['auto_save_inputs'][n]
-    return ''
-
-def set_auto_save_inputs(n: int, content: str):
-    if not 'auto_save_inputs' in session:
-        session['auto_save_inputs'] = {}
-    session['auto_save_inputs'][n] = content
-
-def reset_auto_save_inputs():
-    session['auto_save_inputs'] = {}
-
-
-
-def tiktoken_count_tokens(content: str) -> int:
-    encoding = tiktoken.encoding_for_model(openai_model_name)
-    token_count = len(encoding.encode(content))
-    return token_count
-
-
-## Main Functions for Prompt generation
-def process_var_prompt_base_input(input_text: str) -> tuple[list[str], list[str]]:
-    pattern = re.compile(r'{{(.*?)}}')
-    segments = pattern.split(input_text)
-
-    variable_names = []
-    text_segments = []
-    
-    for i, segment in enumerate(segments):
-        if i % 2 == 0: text_segments.append(segment)
-        else: variable_names.append(segment.strip())
-
-    for i, variable in enumerate(variable_names):
-        if variable == '': variable_names[i] = f'Variable {i+1}'
-    
-    return text_segments, variable_names # List of each Textsegment between and before Variable places, Variable Name
-
-def create_index_values_prompt_list_from_input(text_segments: list, variable_values: list) -> list:
-    """ 
-        Returns a list that looks like this:
-        [
-        index (int, starting at 0),
-        []
-        ]
-    """
-    
-
-
-    if variable_values == []: return [[0,['NO VARIABLES'], text_segments[0]]]
-
-    variable_value_combinations = list(product(*variable_values))
-
-    index_values_prompt_list = []
-    i = 0
-    for values in variable_value_combinations:
-        prompt = ""
-        
-        for j in range(len(values)): 
-            prompt += f'{text_segments[j]}{values[j]}'
-
-        if len(text_segments) > len(values):
-            prompt += text_segments[len(values)] 
-            
-        index_values_prompt_list.append([i, list(values), prompt])
-        i += 1
-
-    return index_values_prompt_list
-
-
-def count_total_tokens_in_prompts_list(prompts_list: list) -> int:
-    total = 0
-    for prompt in prompts_list:
-        total += tiktoken_count_tokens(prompt) 
-
-    return total
-
-async def process_var_prompt(index_values_prompt_list: list):
-    
-    async def process_single_prompt(index_values_prompt_list):
-
-        index           = index_values_prompt_list[0]
-        values          = index_values_prompt_list[1]
-        prompt          = index_values_prompt_list[2]
-        prompt_tokens   = tiktoken_count_tokens(prompt)
-
-        if (datetime.now().timestamp() - float(get_global_api_use_data("reset_time").decode('utf-8'))) > 60:
-            reset_global_api_use_data()
-
-        while True:
-            if ((prompt_tokens * 100) + int(get_global_api_use_data("tpm").decode('utf-8')) + 1000 >= openai_model_limit_tpm):
-                time_utill_reset = int(datetime.now().timestamp() - float(get_global_api_use_data("reset_time").decode('utf-8')))
-                await asyncio.sleep(time_utill_reset)
-            elif (int(get_global_api_use_data("rpm").decode('utf-8')) + 3 >= openai_model_limit_rpm):    
-                time_utill_reset = int(datetime.now().timestamp() - float(get_global_api_use_data("reset_time").decode('utf-8')))
-                await asyncio.sleep(time_utill_reset)
-            else: 
-                break
-
-        try:
-            response = await openai_client.chat.completions.create(
-                model= openai_model_name,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            prompt_response = response.choices[0].message.content
-
-            incr_comp_meta_data(
-                tokens_used_total = response.usage.total_tokens,
-                tokens_used_prompts = response.usage.prompt_tokens,
-                tokens_used_response = response.usage.completion_tokens
-            )
-            incr_global_api_use_data(tpm = response.usage.total_tokens)
-            
-        except Exception as e: 
-            print(f'ERROR - OpenAI API call failed: {e}')
-            prompt_response = f'ERROR. Please contact support for help.'
-
-        return [index, values, prompt, prompt_response]
-    
-    reset_global_api_use_data()
-    init_comp_meta_data(prompts_amount=len(index_values_prompt_list))
-
-    tasks                       = [process_single_prompt(index_values_prompt) for index_values_prompt in index_values_prompt_list]
-    values_prompt_response_list = await asyncio.gather(*tasks)
-
-    try:
-        tokens_used_total, tokens_used_prompts, tokens_used_responses = get_comp_meta_data()
-        current_user.token_balance = current_user.token_balance - tokens_used_total
-        db.session.commit()
-        del_comp_meta_data()
-        session['current_compose_step'] = 0
-
-    except Exception as e: print(f'DB Tokens Used update and VK reset failed:\n\n{e}')
-
-    values_prompt_response_list.sort(key=lambda x: x[0])
-    for entry in values_prompt_response_list: entry.pop(0)
-
-
-    return values_prompt_response_list, tokens_used_total, tokens_used_prompts, tokens_used_responses
-
-
 
 def register_compose_routes(app):
     
@@ -319,70 +35,58 @@ def register_compose_routes(app):
     @app.route('/component/compose/var-prompt/input/<n>', methods=['GET', 'POST'])
     @login_required
     def comp_compose_var_prompt(n):
+
+        if n == 0 and not 'composition' in session:  # n == 0 so the DB (Valkey) does not get quiried each time -> Faster
+            session['composition'] = {
+                'job_id': None,  # Example: '123e4567-e89b-12d3-a456-426614174000'
+                'text_segments': None,  # Example: ['Hello ", " I hope you are", ""]
+                'variables': None,  # Example: ['Name', 'Wish']
+                'values': {
+                    # Example: 'Name': ['Alice', 'Bob']
+                    #          'Wish': ['happy', 'well']
+                }
+            }
+
         try: n = int(n)
         except: abort(404)
 
         if request.method == 'GET':
-            session['current_compose_step'] = n
+            var_amount = len(session['composition']['variables'])
 
-            if n == 0: 
-                return render_template(
-                    'components/compose/var_prompt/input_base.html',
-                    auto_save_text = get_auto_save_inputs(n)
-                )
-            elif 0 < n and n <= len(session['compose_data']['variable_names']): 
-
+            if n == 0:  return render_template('components/compose/var_prompt/input_base.html')
+            
+            elif 0 < n <= var_amount: 
                 return render_template(
                     'components/compose/var_prompt/input_vars.html',
-                    auto_save_text          = get_auto_save_inputs(n),
-                    current_variable_name   = session['compose_data']['variable_names'][n-1],
-                    n                       = n,
-                    N                       = len(session['compose_data']['variable_names']),
-
+                    current_variable_name = session['composition']['variables'][n-1],
+                    n = n, N = var_amount,
                 )
             
-            elif n > len(session['compose_data']['variable_names']):
-                return redirect(url_for('comp_compose_var_prompt_confirm'))
-            
-            else:
-                abort(404)
+            elif n == var_amount + 1: return redirect(url_for('comp_compose_var_prompt_confirm'))
+    
+            else: abort(404)
         
         elif request.method == 'POST':
 
             if n == 0:  # Processing the Base-Prompt
-                
+
                 raw_text = request.form['textarea']
 
-                if raw_text.strip() == '': 
-                    return redirect(url_for('comp_compose_var_prompt', n=0))
+                if raw_text.strip() == '': return redirect(url_for('comp_compose_var_prompt', n=0))
                 
-                set_auto_save_inputs(n, raw_text)
-                text_segments, variable_names = process_var_prompt_base_input(raw_text)
-                
-                set_text_segemnts(text_segments)
-                set_variable_names(variable_names)
+                session['composition']['text_segments'] = re.split(r'{{.*?}}', raw_text)
+                session['composition']['variables'] = [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', raw_text))]               
 
             else:  # Processing Variable Values
 
                 raw_text        = request.form['textarea']
                 var_seperation  = request.form['var_seperation']
+                separators      = {'new_line': '\n', 'comma': ','}
 
-                set_auto_save_inputs(n, raw_text)
+                if var_seperation not in separators: raise ValueError("Clientside variable separation method name not supported")
+                values = [x.strip() for x in raw_text.split(separators[var_seperation]) if x]
 
-                if var_seperation == 'new_line': 
-                    var_inputs = raw_text.split('\n')
-                    while len(var_inputs) > 0 and var_inputs[-1].strip() == '': var_inputs.pop()
-
-                elif var_seperation == 'comma':      
-                    var_inputs = raw_text.split(',')
-                    if len(var_inputs) > 0 and var_inputs[-1].strip() == '': var_inputs.pop()
-
-                else:
-                    raise ValueError("Clientside variable separation method name not supported")
-
-                var_inputs = [var_input.strip() for var_input in var_inputs]
-                current_varabile_name = get_nth_variable_name(n-1)
-                set_variable(current_varabile_name, var_inputs)
+                session['composition']['values'][session['composition']['variables'][n-1]] = values
     
             return redirect(url_for('comp_compose_var_prompt', n=n+1))
 
@@ -391,56 +95,41 @@ def register_compose_routes(app):
     @login_required
     def comp_compose_var_prompt_confirm():
 
-        text_segments   = get_del_text_segments()
-        variable_names  = get_del_variable_names()
-        variable_values = get_del_variables()
+        value_combinations = list(product(*session['composition']['values'].values()))
+        text_segments = session['composition']['text_segments']
+        prompts = [text_segments[0] + ''.join(val + text_segments[i + 1] for i, val in enumerate(combo)) for combo in value_combinations]
         
-        index_values_prompt_list = create_index_values_prompt_list_from_input(text_segments, variable_values)
-
-        session['compose_data']['index_values_prompt_list'] = index_values_prompt_list
-
-        prompts_list            = [index_values_prompt[2] for index_values_prompt in index_values_prompt_list]
-        prompt_token_count      = count_total_tokens_in_prompts_list(prompts_list)
+        prompt_token_count = sum(len(tiktoken.encoding_for_model(openai_model_name).encode(prompt)) for prompt in prompts)
         response_token_count    = int(round(prompt_token_count * 1.874))
         total_token_count       = prompt_token_count + response_token_count 
 
-        base_text_list = []
-        for i, segment in enumerate(text_segments):
-            base_text_list.append(segment)
-            if i < len(variable_names): base_text_list.append(variable_names[i])
-
-        variable_name_and_values = []
-        for i, variable_name in enumerate(variable_names):
-            variable_name_and_values.append([variable_name, variable_values[i]])
-
-        base_text = []
-        for i, segment in enumerate(text_segments):
-            base_text.append(segment)
-            if i < len(variable_names): 
-                base_text.append('{{ ')
-                base_text.append(variable_names[i])
-                base_text.append(' }}')
-        base_text = ''.join(base_text).strip()
-        
-        if len(base_text) <= 180:   session['compose_data']['display_text'] = base_text
-        else:                       session['compose_data']['display_text'] = base_text[0:180].strip() + '...' 
+        base_text_list = [text_segments[0]] + [x for pair in zip(session['composition']['variables'], text_segments[1:]) for x in pair]  # List so that vars can be higlighted in html
 
         return render_template(
             'components/compose/var_prompt/confirm_input.html',
-            n                       = session['current_compose_step'],
+            n                       = len(session['composition']['variables']) + 1,
             prompt_token_count      = token_count_to_string(prompt_token_count),
             response_token_count    = token_count_to_string(response_token_count),
             total_token_count       = token_count_to_string(total_token_count),
             base_text_list          = base_text_list,
-            variable_list           = variable_name_and_values,
-            prompts_list            = prompts_list,
-            prompts_amount          = len(prompts_list),
+            variable_dict           = session['composition', 'values'],
+            prompts_list            = prompts,
+            prompts_amount          = len(prompts),
         )
 
     @app.route('/component/compose/var-prompt/process/start')
     @login_required
     def comp_compose_var_prompt_process_start():
+
+        # Upload request to 
+
+
+
         return render_template('components/compose/var_prompt/process_input.html')
+    
+
+
+#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
 
     @app.route('/component/compose/var-prompt/process/progress_stream')
     @login_required
@@ -526,9 +215,6 @@ def register_compose_routes(app):
         db.session.add(new_request)
         db.session.commit()
 
-        session['current_compose_step'] = 0
-        reset_auto_save_inputs() 
-
         preview_list = [key_prompt_response[2] for key_prompt_response in values_prompt_response_list[0:10]]
         preview_list_is_complete = True if len(preview_list) <= 10 else False
         
@@ -538,15 +224,7 @@ def register_compose_routes(app):
             preview_list_is_complete    = preview_list_is_complete,
             download_url                = url_for('download', request_id=request_id),
         )
-        
-    # User Actions
-    @app.route('/component/compose/var-prompt/action/auto-save/<n>', methods=['POST'])
-    @login_required
-    def comp_compose_var_prompt_auto_save(n):
-        try: n = int(n)
-        except: abort(404)
-        set_auto_save_inputs(n, request.form['textarea'])
-        return "Saved"                    
+                         
         
     @app.route('/component/compose/var-prompt/action/clear_data/<n>')
     @login_required

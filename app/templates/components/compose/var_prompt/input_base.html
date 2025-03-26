@@ -1,98 +1,102 @@
 <h2 class="text-2xl font-semibold">Input base text</h2>
-<form 
-    class="py-6 space-y-5" 
-    hx-post="{{ url_for('comp_compose_var_prompt', n='0')}}" 
-    hx-target="#compose-input-container"
-    hx-swap="innerHTML"
+<form
+  class="py-6 space-y-5"
+  hx-post="{{ url_for('comp_compose_var_prompt', n='0')}}"
+  hx-target="#compose-input-container"
+  hx-swap="innerHTML"
 >
-    <p>
-        Input the base text for the prompt. Mark variables by using double curly  braces surrounding  the variable name.<br><br>
-        Example: <span class="bg-gray-200 px-2 py-1 rounded-2xl">Write a concise description of unique charachteristics of {{ "{{" }} tree type {{ "}}" }}  trees.</span>
-    </p>
-    <div>
-        <div class="w-full flex justify-end px-3 h-6">
-            <p id="saved-status" class="font-bold text-sm text-gray-300">Saved</p>
-        </div>
-        <textarea 
-            id="input-textarea" 
-            class="block w-full min-h-[200px] mt-0 rounded-2xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            name="textarea"
-            hx-post="{{ url_for('comp_compose_var_prompt_auto_save', n='0')}}"
-            hx-trigger="keyup changed delay:500ms"
-            hx-target="#saved-status"
-            hx-swap="innerHTML"
-        >{{ auto_save_text }}</textarea>
-    </div>
+  <p>
+    Input the base text for the prompt. Mark variables by using double curly
+    braces surrounding the variable name.<br /><br />
+    Example:
+    <span class="bg-gray-200 px-2 py-1 rounded-2xl"
+      >Write a concise description of unique charachteristics of {{ "{{" }} tree
+      type {{ "}}" }} trees.</span
+    >
+  </p>
+  <div>
+    <textarea
+      id="input-textarea"
+      class="block w-full min-h-[200px] mt-0 rounded-2xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+      name="textarea"
+    ></textarea>
+  </div>
 
-    <div class="flex items-center justify-between gap-4 whitespace-nowrap">
-        <div id="variable-count" class="flex font-bold">No variables in input</div>
-        <div id="output-variables" class="flex flex-wrap max-w-full items-center gap-2 overflow-x-auto white-space-nowrap">
-        </div>
-    </div>
-                 
+  <div class="flex items-center justify-between gap-4 whitespace-nowrap">
+    <div id="variable-count" class="flex font-bold">No variables in input</div>
+    <div
+      id="output-variables"
+      class="flex flex-wrap max-w-full items-center gap-2 overflow-x-auto white-space-nowrap"
+    ></div>
+  </div>
 
-    <div class="flex gap-3 justify-between items-center">
-        <div class="w-[200px]"></div>
-        <a 
-            hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
-            hx-target="#compose-input-container"
-            hx-swap="innerHTML"
-            class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
-            hx-confirm="Are you sure you wish to delete all inputs? The base prompt field and any variable values will be cleared by this."
-        >Clear all data</a>
-        <button 
-            type="submit" 
-            class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            hx-disabled-elt="this"
-            hx-indicator="#spinner-next"
-        >
-            <p>Continue</p>
-            <i class="fa-solid fa-chevron-right"></i>
-            <img id="spinner-next" class="htmx-indicator h-[20px]" src="{{ url_for('static', filename='spinners/puff.svg') }}">
-            
-        </button>
-    </div>
-
-    
+  <div class="flex gap-3 justify-between items-center">
+    <div class="w-[200px]"></div>
+    <a
+      hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
+      hx-target="#compose-input-container"
+      hx-swap="innerHTML"
+      class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
+      hx-confirm="Are you sure you wish to delete all inputs? The base prompt field and any variable values will be cleared by this."
+      >Clear all data</a
+    >
+    <button
+      type="submit"
+      class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      hx-disabled-elt="this"
+      hx-indicator="#spinner-next"
+    >
+      <p>Continue</p>
+      <i class="fa-solid fa-chevron-right"></i>
+      <img
+        id="spinner-next"
+        class="htmx-indicator h-[20px]"
+        src="{{ url_for('static', filename='spinners/puff.svg') }}"
+      />
+    </button>
+  </div>
 </form>
-
 
 {% raw %}
 <script>
-    document.getElementById('input-textarea').addEventListener('input', function() {
-        let text = this.value;
-        let text_vars = text.match(/{{(.*?)}}/g);
-    
-        let variableOutput  = document.getElementById('output-variables');
-        let titleOutput     = document.getElementById('variable-count');
+  document
+    .getElementById("input-textarea")
+    .addEventListener("input", function () {
+      let text = this.value;
+      let text_vars = text.match(/{{(.*?)}}/g);
 
-        let autoSaveText    = document.getElementById('saved-status');
-        autoSaveText.innerHTML = '';
+      let variableOutput = document.getElementById("output-variables");
+      let titleOutput = document.getElementById("variable-count");
 
-        variableOutput.innerHTML = '';
+      let autoSaveText = document.getElementById("saved-status");
+      autoSaveText.innerHTML = "";
 
-        let title = '';
+      variableOutput.innerHTML = "";
 
-        if (text_vars) {
-            text_vars.forEach((text_var, index) => {
-                let content = text_var.slice(2, -2).trim();
-                if (content === '') { content = `Variable ${index + 1}`;}
-                let span = document.createElement('div');
-                span.className = 'block w auto bg-indigo-100 font-semibold leading-6 text-indigo-600 text-sm px-4 py-1 rounded-2xl';
-                span.textContent = content;
-                variableOutput.appendChild(span);
-            });
-            if (text_vars.length === 1) { title = `1 variable`; } 
-            else { title = `${text_vars.length} variables`; }
+      let title = "";
 
-
-            
-
+      if (text_vars) {
+        text_vars.forEach((text_var, index) => {
+          let content = text_var.slice(2, -2).trim();
+          if (content === "") {
+            content = `Variable ${index + 1}`;
+          }
+          let span = document.createElement("div");
+          span.className =
+            "block w auto bg-indigo-100 font-semibold leading-6 text-indigo-600 text-sm px-4 py-1 rounded-2xl";
+          span.textContent = content;
+          variableOutput.appendChild(span);
+        });
+        if (text_vars.length === 1) {
+          title = `1 variable`;
         } else {
-            title = `No variables in Input`;
+          title = `${text_vars.length} variables`;
         }
+      } else {
+        title = `No variables in Input`;
+      }
 
-        titleOutput.innerHTML = `${title}`;
-    }); 
+      titleOutput.innerHTML = `${title}`;
+    });
 </script>
 {% endraw %}

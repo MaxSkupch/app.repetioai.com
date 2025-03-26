@@ -1,129 +1,174 @@
-<h2 class="text-2xl font-semibold">Input values for <span class="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-2xl">{{current_variable_name}}</span></h2>
-<form 
-    id="compose-form"
-    class="py-6 space-y-5" 
-    hx-post="{{ url_for('comp_compose_var_prompt', n=n )}}" 
-    hx-target="#compose-input-container"
-    hx-swap="innerHTML"
+<h2 class="text-2xl font-semibold">
+  Input values for
+  <span class="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-2xl"
+    >{{current_variable_name}}</span
+  >
+</h2>
+<form
+  id="compose-form"
+  class="py-6 space-y-5"
+  hx-post="{{ url_for('comp_compose_var_prompt', n=n )}}"
+  hx-target="#compose-input-container"
+  hx-swap="innerHTML"
 >
-    <p>Input the values for the variable "{{current_variable_name}}". Separate the variables either by having each in its own line or with a comma.</p>
-    <div>
-        <div class="w-full flex justify-between px-3 h-6">
-            <p class="font-bold text-sm text-gray-300">{{ n }} / {{ N }}</p> 
-            <p id="saved-status" class="font-bold text-sm text-gray-300">Saved</p>
+  <p>
+    Input the values for the variable "{{current_variable_name}}". Separate the
+    variables either by having each in its own line or with a comma.
+  </p>
+  <div>
+    <div class="w-full flex justify-between px-3 h-6">
+      <p class="font-bold text-sm text-gray-300">{{ n }} / {{ N }}</p>
+    </div>
+    <textarea
+      id="input-textarea"
+      class="block w-full min-h-[200px] mt-0 rounded-2xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+      name="textarea"
+    ></textarea>
+  </div>
+
+  <div class="flex items-center justify-between gap-4 whitespace-nowrap">
+    <div id="count" class="flex font-bold">No values in input</div>
+    <div class="flex items-center gap-2 whitespace-nowrap">
+      <p>Separate variables by</p>
+      <div
+        class="w-[300px] bg-white flex gap-1 rounded-full p-1 border-0 shadow-sm ring-1 ring-inset ring-gray-300"
+      >
+        <div class="w-full">
+          <input
+            id="var_seperation-new_line"
+            type="radio"
+            value="new_line"
+            name="var_seperation"
+            class="hidden peer"
+            checked
+          />
+          <label
+            for="var_seperation-new_line"
+            class="w-full flex items-center justify-center py-1 font-semibold leading-6 text-sm rounded-full peer-checked:bg-indigo-50 peer-checked:text-indigo-600 cursor-pointer hover:bg-gray-300"
+            >New line</label
+          >
         </div>
-        <textarea 
-            id="input-textarea" 
-            class="block w-full min-h-[200px] mt-0 rounded-2xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            name="textarea"
-            hx-post="{{ url_for('comp_compose_var_prompt_auto_save', n=n) }}"
-            hx-trigger="keyup changed delay:500ms"
-            hx-target="#saved-status"
-            hx-swap="innerHTML"
-        >{{ auto_save_text }}</textarea>
-    </div>
-
-    <div class="flex items-center justify-between gap-4 whitespace-nowrap">
-        <div id="count" class="flex font-bold">No values in input</div>
-        <div class="flex items-center gap-2 whitespace-nowrap">
-            <p>Separate variables by</p>
-            <div class="w-[300px] bg-white flex gap-1 rounded-full p-1 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
-                <div class="w-full">
-                    <input id="var_seperation-new_line" type="radio" value="new_line" name="var_seperation" class="hidden peer" checked>
-                    <label 
-                        for="var_seperation-new_line" 
-                        class="w-full flex items-center justify-center py-1 font-semibold leading-6 text-sm rounded-full peer-checked:bg-indigo-50 peer-checked:text-indigo-600 cursor-pointer hover:bg-gray-300"
-                    >New line</label>
-                </div>
-                <div class="w-full">
-                    <input id="var_seperation-comma" type="radio" value="comma" name="var_seperation" class="hidden peer">
-                    <label 
-                        for="var_seperation-comma" 
-                        class="w-full flex items-center justify-center py-1 font-semibold leading-6 text-sm rounded-full peer-checked:bg-indigo-50 peer-checked:text-indigo-600 cursor-pointer hover:bg-gray-300"
-                    >Comma</label>
-                </div>
-            </div>
+        <div class="w-full">
+          <input
+            id="var_seperation-comma"
+            type="radio"
+            value="comma"
+            name="var_seperation"
+            class="hidden peer"
+          />
+          <label
+            for="var_seperation-comma"
+            class="w-full flex items-center justify-center py-1 font-semibold leading-6 text-sm rounded-full peer-checked:bg-indigo-50 peer-checked:text-indigo-600 cursor-pointer hover:bg-gray-300"
+            >Comma</label
+          >
         </div>
+      </div>
     </div>
+  </div>
 
-    <style> .spinner-hide {display: none;}</style>
-    <div class="flex gap-3 justify-between items-center">
-        <a 
-            id="back-button"
-            hx-get="{{ url_for('comp_compose_var_prompt', n=(n-1) )}}"
-            hx-target="#compose-input-container"
-            hx-swap="innerHTML"
-            class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            hx-disabled-elt="this"
-        >
-            <img id="spinner-back" class="h-[20px] spinner-hide" src="{{ url_for('static', filename='spinners/puff.svg') }}" hx-indicator>
-            <i class="fa-solid fa-chevron-left"></i>
-            <p>Back</p>
-        </a>
+  <style>
+    .spinner-hide {
+      display: none;
+    }
+  </style>
+  <div class="flex gap-3 justify-between items-center">
+    <a
+      id="back-button"
+      hx-get="{{ url_for('comp_compose_var_prompt', n=(n-1) )}}"
+      hx-target="#compose-input-container"
+      hx-swap="innerHTML"
+      class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      hx-disabled-elt="this"
+    >
+      <img
+        id="spinner-back"
+        class="h-[20px] spinner-hide"
+        src="{{ url_for('static', filename='spinners/puff.svg') }}"
+        hx-indicator
+      />
+      <i class="fa-solid fa-chevron-left"></i>
+      <p>Back</p>
+    </a>
 
-        <a 
-            hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
-            hx-target="#compose-input-container"
-            hx-swap="innerHTML"
-            class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
-            hx-confirm="Are you sure you wish to delete all inputs? The base prompt field and any variable values will be cleared by this."
-        >Clear all data</a>
+    <a
+      hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
+      hx-target="#compose-input-container"
+      hx-swap="innerHTML"
+      class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
+      hx-confirm="Are you sure you wish to delete all inputs? The base prompt field and any variable values will be cleared by this."
+      >Clear all data</a
+    >
 
-        <button 
-            type="submit" 
-            class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        >
-            <p>Continue</p>
-            <i class="fa-solid fa-chevron-right"></i>
-            <img id="spinner-continue" class="h-[20px] spinner-hide" src="{{ url_for('static', filename='spinners/puff.svg') }}">
-        </button>
-    </div>
-
+    <button
+      type="submit"
+      class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+    >
+      <p>Continue</p>
+      <i class="fa-solid fa-chevron-right"></i>
+      <img
+        id="spinner-continue"
+        class="h-[20px] spinner-hide"
+        src="{{ url_for('static', filename='spinners/puff.svg') }}"
+      />
+    </button>
+  </div>
 </form>
-
 
 {% raw %}
 <script>
-    document.addEventListener('htmx:beforeRequest', function(event) {
-        if (event.detail.elt.id === 'compose-form') {
-            document.getElementById('spinner-continue').classList.remove('spinner-hide');
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    if (event.detail.elt.id === "compose-form") {
+      document
+        .getElementById("spinner-continue")
+        .classList.remove("spinner-hide");
+    }
+    if (event.detail.elt.id === "back-button") {
+      document.getElementById("spinner-back").classList.remove("spinner-hide");
+    }
+  });
+
+  function initializeVariableCountScript() {
+    const inputFromTextarea = document.getElementById("input-textarea");
+    const countDisplay = document.getElementById("count");
+    const separatorRadios = document.querySelectorAll(
+      'input[name="var_seperation"]'
+    );
+
+    function updateCount() {
+      const text = inputFromTextarea.value;
+      const separator = document.querySelector(
+        'input[name="var_seperation"]:checked'
+      ).value;
+      let values = [];
+
+      if (separator === "new_line") {
+        values = text.split("\n");
+        while (values.length > 0 && values[values.length - 1].trim() === "") {
+          values.pop();
         }
-        if (event.detail.elt.id === 'back-button') {
-            document.getElementById('spinner-back').classList.remove('spinner-hide');
+      } else if (separator === "comma") {
+        values = text.split(",");
+        if (values.length > 0 && values[values.length - 1].trim() === "") {
+          values.pop();
         }
-    });
+      }
 
-    function initializeVariableCountScript() {
-        const inputFromTextarea = document.getElementById('input-textarea');
-        const countDisplay = document.getElementById('count');
-        const separatorRadios = document.querySelectorAll('input[name="var_seperation"]');
-
-        function updateCount() {
-            const text = inputFromTextarea.value;
-            const separator = document.querySelector('input[name="var_seperation"]:checked').value;
-            let values = [];
-
-            if (separator === 'new_line') { 
-                values = text.split('\n');
-                while (values.length > 0 && values[values.length - 1].trim() === "") { values.pop(); }
-            } else if (separator === 'comma') { 
-                values = text.split(','); 
-                if (values.length > 0 && values[values.length - 1].trim() === "") { values.pop(); }
-            } 
-            
-            if      (values.length === 0) { countDisplay.textContent = "No values in input"; }
-            else if (values.length === 1) { countDisplay.textContent = `${values.length} value`; }
-            else                          { countDisplay.textContent = `${values.length} values`; }
-            
-            let autoSaveText    = document.getElementById('saved-status');
-            autoSaveText.innerHTML = '';
-        }
-
-        inputFromTextarea.addEventListener('input', updateCount);
-        separatorRadios.forEach(radio => radio.addEventListener('change', updateCount));
+      if (values.length === 0) {
+        countDisplay.textContent = "No values in input";
+      } else if (values.length === 1) {
+        countDisplay.textContent = `${values.length} value`;
+      } else {
+        countDisplay.textContent = `${values.length} values`;
+      }
     }
 
-    // Call the function to initialize the script
-    initializeVariableCountScript();
+    inputFromTextarea.addEventListener("input", updateCount);
+    separatorRadios.forEach((radio) =>
+      radio.addEventListener("change", updateCount)
+    );
+  }
+
+  // Call the function to initialize the script
+  initializeVariableCountScript();
 </script>
 {% endraw %}

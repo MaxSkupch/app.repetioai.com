@@ -82,3 +82,10 @@ class Request(db.Model):
 
     user                    = db.relationship('User', back_populates='requests')
 
+
+
+"""
+Request.data V1:
+
+Request.data V2...
+"""
