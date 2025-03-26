@@ -6,6 +6,7 @@ import tempfile
 import tiktoken
 import time
 import ulid
+import uuid
 
 from datetime       import datetime
 from flask          import render_template, abort, request, redirect, url_for, Response, stream_with_context, current_app, send_file, session
@@ -38,7 +39,8 @@ def register_compose_routes(app):
 
         if n == 0 and not 'composition' in session:  # n == 0 so the DB (Valkey) does not get quiried each time -> Faster
             session['composition'] = {
-                'job_id': None,  # Example: '123e4567-e89b-12d3-a456-426614174000'
+                'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
+                "user_id": current_user.id,
                 'text_segments': None,  # Example: ['Hello ", " I hope you are", ""]
                 'variables': None,  # Example: ['Name', 'Wish']
                 'values': {
@@ -121,9 +123,9 @@ def register_compose_routes(app):
     @login_required
     def comp_compose_var_prompt_process_start():
 
-        # Upload request to 
-
-
+        composition = session.pop('composition')
+        current_app.vk.set(f"job:{composition['job_id']}", json.dumps(composition))
+        current_app.vk.lpush("pending_jobs", composition['job_id'])
 
         return render_template('components/compose/var_prompt/process_input.html')
     
