@@ -1,63 +1,79 @@
-<div class="min-h-[100px] h-full w-full flex flex-col justify-center items-center gap-5">
+<div
+    class="min-h-[100px] h-full w-full flex flex-col justify-center items-center gap-5"
+>
+    <div
+        id="sse-target"
+        hx-ext="sse"
+        sse-connect="{{ url_for('comp_compose_var_prompt_process_progress') }}"
+        sse-swap="message"
+        style="display: none"
+    ></div>
 
-    <div 
-        id="sse-target" 
-        hx-ext="sse" 
-        sse-connect="{{ url_for('comp_compose_var_prompt_process_progress') }}" 
-        sse-swap="message" 
-        style="display: none;"
-    ></div> 
-
-    <div class="w-full flex items-center justify-between gap-4 whitespace-nowrap">
-        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
-            <div class="text-2xl font-semibold"><span id="progress_text_ratio">0</span> <span class="text-xs font-normal">Prompts</span></div>
+    <div
+        class="w-full flex items-center justify-between gap-4 whitespace-nowrap"
+    >
+        <div
+            class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300"
+        >
+            <div class="text-2xl font-semibold">
+                <span id="progress_text_percent">0</span>
+                <span class="text-xs font-normal">%</span>
+            </div>
             <div class="text-sm font-semibold text-indigo-600">COMPLETED</div>
         </div>
-        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
-            <div class="text-2xl font-semibold"><span id="progress_text_percent">0</span> <span class="text-xs font-normal">%</span></div>
-            <div class="text-sm font-semibold text-indigo-600">COMPLETED</div>
-        </div>
-        <div class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300">
-            <div class="text-2xl font-semibold"><span id="progress_text_tokens">0</span> <span class="text-xs font-normal">Tokens</span></div>
+        <div
+            class="w-full bg-white flex flex-col items-center justify-center gap-1 rounded-2xl py-4 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300"
+        >
+            <div class="text-2xl font-semibold">
+                <span id="progress_text_tokens">0</span>
+                <span class="text-xs font-normal">Tokens</span>
+            </div>
             <div class="text-sm font-semibold text-indigo-600">USED</div>
         </div>
     </div>
 
-    <div id="results_container" class="min-h-[100px] h-full w-full flex flex-col justify-center items-center gap-5">
-    
-        <p class="font-bold text-red-600 cursor-not-allowed"
-        >Do not close this page until the process is completed</p>
-
+    <div
+        id="results_container"
+        class="min-h-[100px] h-full w-full flex flex-col justify-center items-center gap-5"
+    >
         <div class="w-full bg-gray-200 rounded-full h-5 p-0.5">
-            <div id="progress_bar" class="bg-indigo-600 h-full rounded-full" style="width: 0%"></div>
+            <div
+                id="progress_bar"
+                class="bg-indigo-600 h-full rounded-full"
+                style="width: 0%"
+            ></div>
         </div>
 
-        <div hx-get="{{ url_for('comp_compose_var_prompt_process_process') }}" 
-            hx-trigger="load" 
-            hx-indicator="#spinner-next" 
-            hx-target="#results_container" 
+        <div
+            hx-get="{{ url_for('comp_compose_var_prompt_process_process') }}"
+            hx-trigger="load"
+            hx-indicator="#spinner-next"
+            hx-target="#results_container"
             hx-swap="innerHTML"
         >
-            <img id="spinner-next" class="htmx-indicator h-[50px] mt-5" src="{{ url_for('static', filename='spinners/tail-spin-dark.svg') }}">
+            <img
+                id="spinner-next"
+                class="htmx-indicator h-[50px] mt-5"
+                src="{{ url_for('static', filename='spinners/tail-spin-dark.svg') }}"
+            />
         </div>
 
         <script>
-            document.body.addEventListener('htmx:sseMessage', function(event) {
-                const data                  = JSON.parse(event.detail.data);
-                const progressBar           = document.getElementById('progress_bar');
-                const progress_text_ratio   = document.getElementById('progress_text_ratio');
-                const progress_text_percent = document.getElementById('progress_text_percent');
-                const progress_text_tokens  = document.getElementById('progress_text_tokens');
-            
-                progressBar.style.width = data.percentage + '%';
-                progress_text_ratio.textContent = `${data.completed} / ${data.total}`;
-                progress_text_percent.textContent = `${data.percentage}`;
+            document.body.addEventListener("htmx:sseMessage", function (event) {
+                const data = JSON.parse(event.detail.data);
+                const progressBar = document.getElementById("progress_bar");
+
+                const progress_text_percent = document.getElementById(
+                    "progress_text_percent"
+                );
+                const progress_text_tokens = document.getElementById(
+                    "progress_text_tokens"
+                );
+
+                progressBar.style.width = data.progress + "%";
+                progress_text_percent.textContent = `${data.progress}`;
                 progress_text_tokens.textContent = `${data.tokens}`;
-            
             });
         </script>
-
     </div>
-
 </div>
-
