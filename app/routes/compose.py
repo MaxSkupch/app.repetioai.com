@@ -204,6 +204,8 @@ def register_compose_routes(app):
 
         #### TODO Delet all the reddis entries
 
+        # current_app.vk.delete('key1', 'key2', 'key3')
+
         
         return render_template(
             'components/compose/var_prompt/view_results.html',
