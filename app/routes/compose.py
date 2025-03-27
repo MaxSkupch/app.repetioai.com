@@ -1,3 +1,41 @@
+'''
+All Pages and functions related to the compose Pages
+
+
+ValKey format:
+User Specific:      user({id}):{category}:{subcategory}... -> value
+Global:             global:{category}:{subcategory}... -> value 
+
+vk.set('global:limits:openai:tpm', 0)
+vk.set('global:limits:openai:rpm', 0)
+vk.set('global:limits:openai:reset_time', datetime.now().timestamp())
+
+
+
+vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_total',      response.usage.total_tokens)
+vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_prompts',    response.usage.prompt_tokens)
+vk.incrby(f'global:user({current_user.id}):request_counts:tokens_used_response',   response.usage.completion_tokens)
+vk.incrby(f'global:user({current_user.id}):request_counts:prompts_completed',      1)
+
+
+
+response_data = {'response': 'API response here'}  # Example API response
+redis_client.hset(f'responses:{session_id}', index, json.dumps(response_data))
+
+
+Get Data---
+
+# Retrieve all responses for the session
+responses = redis_client.hgetall(f'responses:{session_id}')
+
+# Sort responses by index (keys)
+sorted_responses = sorted(responses.items(), key=lambda x: int(x[0]))
+
+# Convert from Redis format (bytes) to usable Python objects
+ordered_responses = [json.loads(value.decode()) for _, value in sorted_responses]
+'''
+
+
 import csv
 import json
 import os
@@ -40,8 +78,8 @@ def register_compose_routes(app):
         if n == 0 and not 'composition' in session:  # n == 0 so the DB (Valkey) does not get quiried each time -> Faster
             session['composition'] = {
                 'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
-                "user_id": current_user.id,
-                'text_segments': None,  # Example: ['Hello ", " I hope you are", ""]
+                'user_id': current_user.id,
+                'text_segments': None,  # Example: ['Hello ', ' I hope you are', '']
                 'variables': None,  # Example: ['Name', 'Wish']
                 'values': {
                     # Example: 'Name': ['Alice', 'Bob']
@@ -85,7 +123,7 @@ def register_compose_routes(app):
                 var_seperation  = request.form['var_seperation']
                 separators      = {'new_line': '\n', 'comma': ','}
 
-                if var_seperation not in separators: raise ValueError("Clientside variable separation method name not supported")
+                if var_seperation not in separators: raise ValueError('Clientside variable separation method name not supported')
                 values = [x.strip() for x in raw_text.split(separators[var_seperation]) if x]
 
                 session['composition']['values'][session['composition']['variables'][n-1]] = values
@@ -123,102 +161,49 @@ def register_compose_routes(app):
     @login_required
     def comp_compose_var_prompt_process_start():
 
+        #TODO CHack if USER has enough tokens 
+
         composition = session.pop('composition')
-        current_app.vk.set(f"job:{composition['job_id']}", json.dumps(composition))
-        current_app.vk.lpush("pending_jobs", composition['job_id'])
+        session['job']
+        current_app.vk.set(f'jobs:data:{composition['job_id']}', json.dumps(composition))
+        current_app.vk.set(f'jobs:status:{composition['job_id']}', 'Pending...')
+        current_app.vk.set(f'jobs:progress:{composition['job_id']}', 0.0)
+        current_app.vk.set(f'jobs:tokens:{composition['job_id']}', 0)
+        current_app.vk.lpush('jobs:pending', composition['job_id'])
 
         return render_template('components/compose/var_prompt/process_input.html')
     
 
-
-#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
-
     @app.route('/component/compose/var-prompt/process/progress_stream')
     @login_required
     def comp_compose_var_prompt_process_progress():
-        vk = current_app.vk
-
-        while True: # Wait till up-to-date data is uploaded before streaming
-            data_reset = int(vk.get(f'global:user({current_user.id}):request_counts:start_progress_stream') or 0)                           
-            if data_reset == 1: 
-                vk.set(f'global:user({current_user.id}):request_counts:start_progress_stream', 0)
-                break
-            time.sleep(0.2)
-
         def generate():
-            prompt_amount           = int(vk.get(f'global:user({current_user.id}):request_counts:prompts_amount') or 0)
-            prompts_completed_prev  = 0
-            percentage              = 0
-
+            tokens_ref = 0
             while True:
-                prompts_completed = int(vk.get(f'global:user({current_user.id}):request_counts:prompts_completed') or 0)
-                total_tokens_used = int(vk.get(f'global:user({current_user.id}):request_counts:tokens_used_total') or 0)
+                progress = int(current_app.vk.get(f'jobs:progress:{composition['job_id']}'))
+                tokens = current_app.vk.get(f'jobs:tokens:{composition['job_id']}')
 
-                if prompts_completed_prev != prompts_completed:
-                    prompts_completed_prev = prompts_completed
-                    percentage = (prompts_completed / prompt_amount) * 100
-
-                    progress = json.dumps({
-                        'completed': prompts_completed,
-                        'total': prompt_amount,
-                        'tokens': total_tokens_used,
-                        'percentage': round(percentage)
-                    })
-                    yield f"data: {progress}\n\n"
+                if tokens != tokens_ref:
+                    tokens_ref = tokens
+                    yield f'data: {json.dumps({'progress': progress, 'tokens': tokens})}\n\n'
                 
-                time.sleep(0.3)
-                if percentage == 100: break
+                time.sleep(0.2)
+                if progress == 100: break
             
+        #TODO Fix Frontend so It works with updated data
+
         return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
+#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
+    
     @app.route('/component/compose/var-prompt/process/process')
     @login_required
     async def comp_compose_var_prompt_process_process():     
 
-        if current_user.token_balance <= 0: abort(402, description="Insufficient tokens to complete this action.")
+        if current_user.token_balance <= 0: abort(402, description='Insufficient tokens to complete this action.')
 
-        index_values_prompt_list    = session['compose_data']['index_values_prompt_list']
-        variable_names              = session['compose_data']['variable_names']
-        display_text                = session['compose_data']['display_text']
+        #### TODO Delet all the reddis entries
 
-        values_prompt_response_list, tokens_used_total, tokens_used_prompts, tokens_used_responses = await process_var_prompt(index_values_prompt_list)
-
-        results_table = []
-        if variable_names:
-            results_table.append(variable_names + ['Prompt', 'Response'])
-            for values_prompt_response in values_prompt_response_list:
-                row = []
-                for value in values_prompt_response[0]: row.append(value)
-                row.append(values_prompt_response[1])
-                row.append(values_prompt_response[2])
-                results_table.append(row)
-        else:
-            results_table.append(['Prompt', 'Response'])
-            results_table.append([values_prompt_response_list[0][1], values_prompt_response_list[0][2]])
-
-        request_id = str(ulid.new())
-        new_request = Request(
-            id                      = request_id,
-            user_id                 = current_user.id,
-            tokens_used_total       = tokens_used_total,
-            tokens_used_prompts     = tokens_used_prompts,
-            tokens_used_responses   = tokens_used_responses,
-            prompt_amount           = len(index_values_prompt_list),
-            display_text            = display_text,
-            data                    = {
-                'type':     'var_prompt',
-                'version':  1,
-                'data': {
-                    'variable_names':   variable_names,
-                    'results_table' :   results_table,
-                }
-            }
-        )
-        db.session.add(new_request)
-        db.session.commit()
-
-        preview_list = [key_prompt_response[2] for key_prompt_response in values_prompt_response_list[0:10]]
-        preview_list_is_complete = True if len(preview_list) <= 10 else False
         
         return render_template(
             'components/compose/var_prompt/view_results.html',
@@ -228,6 +213,9 @@ def register_compose_routes(app):
         )
                          
         
+    ### TODO Get Back Autosave via Github
+
+
     @app.route('/component/compose/var-prompt/action/clear_data/<n>')
     @login_required
     def comp_compose_var_prompt_clear_data(n):
@@ -251,7 +239,7 @@ def register_compose_routes(app):
         results_table = request.data.get('data', {}).get('results_table', [])
         if not results_table: abort(500)
 
-        filename = f"{request_id}.csv"
+        filename = f'{request_id}.csv'
         temp_dir = tempfile.gettempdir()
         filepath = os.path.join(temp_dir, filename)
 
