@@ -93,7 +93,7 @@ def register_compose_routes(app):
         if request.method == 'GET':
             var_amount = len(session['composition']['variables'])
 
-            if n == 0:  return render_template('components/compose/var_prompt/input_base.html')
+            if n == 0:  return render_template('components/compose/var_prompt/input_base.html', auto_save_text = auto_save_text)
             
             elif 0 < n <= var_amount: 
                 return render_template(
@@ -253,3 +253,22 @@ def register_compose_routes(app):
         except FileNotFoundError: return {'error': 'File not found'}, 404
 
 
+
+
+    # User Actions
+    @app.route('/component/compose/var-prompt/action/auto-save/<n>', methods=['POST'])
+    @login_required
+    def comp_compose_var_prompt_auto_save(n):
+        try: n = int(n)
+        except: abort(404)
+        set_auto_save_inputs(n, request.form['textarea'])
+        return "Saved"                    
+        
+    @app.route('/component/compose/var-prompt/action/clear_data/<n>')
+    @login_required
+    def comp_compose_var_prompt_clear_data(n):
+        try: n = int(n)
+        except: abort(404)
+        reset_auto_save_inputs()
+        session['compose_data'] = {}
+        return redirect(url_for('comp_compose_var_prompt', n=n))
