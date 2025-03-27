@@ -47,7 +47,7 @@ import ulid
 import uuid
 
 from datetime       import datetime
-from flask          import render_template, abort, request, redirect, url_for, Response, stream_with_context, current_app, send_file, session
+from flask          import render_template, abort, request, redirect, url_for, Response, stream_with_context, current_app, send_file, session, flash
 from flask_login    import login_required, current_user
 from itertools      import product
 from zoneinfo       import ZoneInfo
@@ -79,6 +79,7 @@ def register_compose_routes(app):
             session['composition'] = {
                 'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
                 'user_id': current_user.id,
+                'prompt_tokens': 0,
                 'text_segments': None,  # Example: ['Hello ', ' I hope you are', '']
                 'variables': None,  # Example: ['Name', 'Wish']
                 'values': {
@@ -142,6 +143,7 @@ def register_compose_routes(app):
         prompt_token_count = sum(len(tiktoken.encoding_for_model(openai_model_name).encode(prompt)) for prompt in prompts)
         response_token_count    = int(round(prompt_token_count * 1.874))
         total_token_count       = prompt_token_count + response_token_count 
+        session['composition']['prompt_tokens'] = prompt_token_count
 
         base_text_list = [text_segments[0]] + [x for pair in zip(session['composition']['variables'], text_segments[1:]) for x in pair]  # List so that vars can be higlighted in html
 
@@ -161,52 +163,46 @@ def register_compose_routes(app):
     @login_required
     def comp_compose_var_prompt_process_start():
 
-        #TODO CHack if USER has enough tokens 
-
+        if current_user.token_balance <= session['composition']['prompt_tokens']:
+            flash("Your token balance is too low. Please upgrade your account by clicking your token balance in the side menu, or wait for it to reset at the end of the billing period.") 
+            return redirect(url_for("comp_compose_var_prompt_confirm"))
+        
         composition = session.pop('composition')
-        session['job']
+
         current_app.vk.set(f'jobs:data:{composition['job_id']}', json.dumps(composition))
         current_app.vk.set(f'jobs:status:{composition['job_id']}', 'Pending...')
         current_app.vk.set(f'jobs:progress:{composition['job_id']}', 0.0)
         current_app.vk.set(f'jobs:tokens:{composition['job_id']}', 0)
         current_app.vk.lpush('jobs:pending', composition['job_id'])
 
-        return render_template('components/compose/var_prompt/process_input.html')
+        return render_template('components/compose/var_prompt/process_input.html', job_id = composition['job_id'])
     
 
-    @app.route('/component/compose/var-prompt/process/progress_stream')
+    @app.route('/component/compose/var-prompt/process/progress_stream/<job_id>')
     @login_required
-    def comp_compose_var_prompt_process_progress():
-        def generate():
-            tokens_ref = 0
-            while True:
-                progress = int(current_app.vk.get(f'jobs:progress:{composition['job_id']}'))
-                tokens = current_app.vk.get(f'jobs:tokens:{composition['job_id']}')
-
-                if tokens != tokens_ref:
+    def comp_compose_var_prompt_process_progress(job_id):
+        def generate(tokens_ref = 0):
+            while (status := current_app.vk.get(f'jobs:status:{job_id}')) != 'Complete':
+                if (tokens := current_app.vk.get(f'jobs:tokens:{job_id}')) != tokens_ref:
                     tokens_ref = tokens
-                    yield f'data: {json.dumps({'progress': progress, 'tokens': tokens})}\n\n'
-                
-                time.sleep(0.2)
-                if progress == 100: break
+                    yield f'data: {json.dumps({'status': status, 'progress': int(current_app.vk.get(f'jobs:progress:{job_id}') or 0), 'tokens': tokens})}\n\n'
+                time.sleep(0.1)
             
-        #TODO Fix Frontend so It works with updated data
-
         return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
-#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
+
     
-    @app.route('/component/compose/var-prompt/process/process')
+    @app.route('/component/compose/var-prompt/process/complete/<job_id>')
     @login_required
-    async def comp_compose_var_prompt_process_process():     
+    def comp_compose_var_prompt_process_complete(job_id):   
+        request = Request.query.get(current_app.vk.get(f'jobs:request_id:{job_id}'))
+        current_app.vk.delete(f'jobs:request_id:{job_id}')
 
-        if current_user.token_balance <= 0: abort(402, description='Insufficient tokens to complete this action.')
+        if not request.user_id == current_user.id: abort(401)
 
-        #### TODO Delet all the reddis entries
+        ## Continue from here
 
-        # current_app.vk.delete('key1', 'key2', 'key3')
 
-        
         return render_template(
             'components/compose/var_prompt/view_results.html',
             preview_list                = preview_list,
@@ -214,20 +210,7 @@ def register_compose_routes(app):
             download_url                = url_for('download', request_id=request_id),
         )
                          
-        
-    ### TODO Get Back Autosave via Github
-
-
-    @app.route('/component/compose/var-prompt/action/clear_data/<n>')
-    @login_required
-    def comp_compose_var_prompt_clear_data(n):
-        try: n = int(n)
-        except: abort(404)
-        reset_auto_save_inputs()
-        session['compose_data'] = {}
-        return redirect(url_for('comp_compose_var_prompt', n=n))
-
-
+#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
 
     @app.route('/download/<request_id>')
     @login_required

@@ -4,7 +4,7 @@
     <div
         id="sse-target"
         hx-ext="sse"
-        sse-connect="{{ url_for('comp_compose_var_prompt_process_progress') }}"
+        sse-connect="{{ url_for('comp_compose_var_prompt_process_progress', job_id = {{ job_id }}) }}"
         sse-swap="message"
         style="display: none"
     ></div>
@@ -45,7 +45,7 @@
         </div>
 
         <div
-            hx-get="{{ url_for('comp_compose_var_prompt_process_process') }}"
+            hx-get="{{ url_for('comp_compose_var_prompt_process_complete', job_id = {{ job_id }}) }}"
             hx-trigger="load"
             hx-indicator="#spinner-next"
             hx-target="#results_container"
