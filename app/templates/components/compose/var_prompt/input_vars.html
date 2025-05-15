@@ -7,7 +7,7 @@
 <form
   id="compose-form"
   class="py-6 space-y-5"
-  hx-post="{{ url_for('comp_compose_var_prompt', n=n )}}"
+  hx-post="{{ url_for('comp_compose_var_prompt_input', n=n )}}"
   hx-target="#compose-input-container"
   hx-swap="innerHTML"
 >
@@ -81,7 +81,7 @@
   <div class="flex gap-3 justify-between items-center">
     <a
       id="back-button"
-      hx-get="{{ url_for('comp_compose_var_prompt', n=(n-1) )}}"
+      hx-get="{{ url_for('comp_compose_var_prompt_input', n=(n-1) )}}"
       hx-target="#compose-input-container"
       hx-swap="innerHTML"
       class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -98,7 +98,7 @@
     </a>
 
     <a
-      hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
+      hx-get="{{ url_for('comp_compose_var_prompt_clear_input')}}"
       hx-target="#compose-input-container"
       hx-swap="innerHTML"
       class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"

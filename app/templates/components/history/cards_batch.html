@@ -1,6 +1,6 @@
-<div class="w-full ">
+<div class="w-full">
     {% for request in requests_list %}
-        <div class="w-full min-w-[300px] bg-white flex flex-col flex-none gap-4 rounded-2xl py-6 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300 whitespace-nowrap">
+        <div class="w-full min-w-[300px] bg-white flex flex-col flex-none gap-4 rounded-2xl py-6 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300 whitespace-nowrap mb-8">
             <div class="flex items-center mb-2"> 
                 <h2 class="text-2xl font-semibold">{{ request['created_at_date'] }}</h2> 
                 <div class="ml-3 bg-indigo-100 text-lg font-medium rounded-2xl px-2 py-0.5">{{ request['created_at_time'] }}</div>
@@ -44,7 +44,7 @@
 
 {% if has_more %}
     <div 
-        hx-get="{{ url_for('comp_history_cards_batch', n=n)}}" 
+        hx-get="{{ url_for('comp_request_history_cards_batch', n=n)}}" 
         hx-trigger="intersect" 
         hx-swap="outerHTML" 
         hx-indicator="#spinner-more" 
