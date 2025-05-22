@@ -36,8 +36,8 @@ from zoneinfo       import ZoneInfo
 from app            import db
 from app.extensions import openai_client
 from app.functions  import token_count_to_string
-from app.models     import UserSubscription, Request
-from app.values     import openai_model_name, openai_model_limit_context_window
+from app.models     import Request
+from app.values     import OPENAI_API_MODEL_NAME
 
 
 '''
@@ -113,25 +113,22 @@ def register_compose_routes(app):
         except: abort(404)
 
         if request.method == 'GET':
-            if n == 0:  
-                return render_template('components/compose/var_prompt/input_base.html', auto_save_text = get_from_composition_draft(n))
+            session['current_composition_step'] = n
+
+            if n == 0: return render_template('components/compose/var_prompt/input_base.html', auto_save_text = get_from_composition_draft(n))
 
             base_prompt = get_from_composition_draft(0)
             var_names = [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', base_prompt))]
             
-            if 0 < n <= len(var_names): 
-                return render_template('components/compose/var_prompt/input_vars.html', current_variable_name = var_names[n-1], n = n, N = len(var_names), auto_save_text = get_from_composition_draft(n))
-            
-            elif n > len(var_names): 
-                return redirect(url_for('comp_compose_var_prompt_confirm'))
+            if 0 < n <= len(var_names): return render_template('components/compose/var_prompt/input_vars.html', current_variable_name = var_names[n-1], n = n, N = len(var_names), auto_save_text = get_from_composition_draft(n))
+            elif n > len(var_names): return redirect(url_for('comp_compose_var_prompt_confirm'))
     
             abort(404)
         
         elif request.method == 'POST':
             raw_text = request.form['textarea']
             
-            if raw_text.strip() == '':
-                return redirect(url_for('comp_compose_var_prompt_input', n=n))
+            if raw_text.strip() == '': return redirect(url_for('comp_compose_var_prompt_input', n=n))
             
             separator = None
             if n > 0:
@@ -148,65 +145,60 @@ def register_compose_routes(app):
     @login_required
     def comp_compose_var_prompt_confirm():
 
-        if not 'composition_draft' in session: raise ValueError('No composition draft found in session when requesing confirmation page')
+        if 'composition_draft' not in session or not session['composition_draft']: raise ValueError('No composition draft found in session when requesing confirmation page')
         composition_draft = session['composition_draft']
-        if len(composition_draft) == 0: raise ValueError('Empty composition draft found in session when requesing confirmation page')
+
+        text_segments = re.split(r'{{.*?}}', composition_draft[0])
+        variables = [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', composition_draft[0]))]
+        base_text_list = [text_segments[0]] + [x for pair in zip(variables, text_segments[1:]) for x in pair]  # List so that vars can be higlighted in html.
         
-        composition = {
-            'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
-            'user_id': current_user.id,
-            'text_segments': re.split(r'{{.*?}}', composition_draft[0]),
-            'variables': [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', composition_draft[0]))],  
-            'values': [],
-        } 
+        values = [[value.strip() for value in value_text.split(seperator) if value.strip()] for value_text, seperator in composition_draft[1:]]
+        variable_value_pairings = list(zip(variables, values))
+        value_combinations = list(product(*values))
         
-        for values_text, seperator in composition_draft[1:]: 
-            values_list = [x.strip() for x in values_text.split(seperator) if x]
-            composition['values'].append(values_list)
-    
-            
-        ### TODO CONTINUE HERE
+        if len(text_segments) == 1: prompts = [text_segments[0]]
+        else: prompts = [text_segments[0] + ''.join(value + text_segments[i + 1] for i, value in enumerate(combo)) for combo in value_combinations]
 
-                    
-        '''
-        session['composition']['values'][session['composition']['variables'][n-1]] = values
-
-        value_combinations = list(product(*session['composition']['values'].values()))
-        text_segments = session['composition']['text_segments']
-        prompts = [text_segments[0] + ''.join(val + text_segments[i + 1] for i, val in enumerate(combo)) for combo in value_combinations]
+        prompt_token_count = sum(len(tiktoken.encoding_for_model(OPENAI_API_MODEL_NAME).encode(prompt)) for prompt in prompts)
         
-        prompt_token_count = sum(len(tiktoken.encoding_for_model(openai_model_name).encode(prompt)) for prompt in prompts)
-        # TODO Check Context window len
-
-
-        base_text_list = [text_segments[0]] + [x for pair in zip(session['composition']['variables'], text_segments[1:]) for x in pair]  # List so that vars can be higlighted in html
-        '''
         return render_template(
             'components/compose/var_prompt/confirm_input.html',
-            n                       = len(session['composition']['variables']) + 1,
-            prompt_token_count      = token_count_to_string(prompt_token_count),
-            response_token_count    = token_count_to_string(prompt_token_count * 1.874),
-            total_token_count       = token_count_to_string(prompt_token_count * 2.874),
+            n                       = len(composition_draft),
             base_text_list          = base_text_list,
-            variable_dict           = session['composition', 'values'],
+            variable_value_pairings = variable_value_pairings,
             prompts_list            = prompts,
             prompts_amount          = len(prompts),
+            prompt_token_count      = token_count_to_string(prompt_token_count),
+            response_token_count    = token_count_to_string(round(prompt_token_count * 1.8)),  # TODO: Track this in the future and adjust it
+            total_token_count       = token_count_to_string(round(prompt_token_count * 2.8)),  # TODO: Track this in the future and adjust it
         )
 
     @app.route('/component/compose/var-prompt/process/start')
     @login_required
     def comp_compose_var_prompt_process_start():
+        ''' Get then delete the composition draft from the session, upload the finalized composition to the queue and redirect to the progress page. '''
 
-        if current_user.token_balance <= session['composition']['prompt_tokens']:
-            flash("Your token balance is too low. Please upgrade your account by clicking your token balance in the side menu, or wait for it to reset at the end of the billing period.") 
-            return redirect(url_for("comp_compose_var_prompt_confirm"))
-        
-        composition = session.pop('composition')
+        # TODO Check if the token count is too high for the model (context window)
+        # TODO Check if the token count is too high for the user 
+        # If to high -> redirect to the confirmation page with a flah warning, and do so before popping the session
 
-        current_app.vk.set(f'jobs:data:{composition['job_id']}', json.dumps(composition))
-        current_app.vk.set(f'jobs:status:{composition['job_id']}', 'Pending...')
-        current_app.vk.set(f'jobs:progress:{composition['job_id']}', 0.0)
-        current_app.vk.set(f'jobs:tokens:{composition['job_id']}', 0)
+        composition_draft = session.pop('composition_draft', None)
+        if not composition_draft: abort(404)
+        session['current_composition_step'] = 0
+
+        composition = {
+            'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
+            'user_id': current_user.id,
+            'text_segments': re.split(r'{{.*?}}', composition_draft[0]),
+            'variables': [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', composition_draft[0]))],  
+            'values': [[value.strip() for value in value_text.split(seperator) if value.strip()] for value_text, seperator in composition_draft[1:]],
+        } 
+
+        # All VK entries are deleted by the Request Processor when the job is completed
+        current_app.vk.set(f'job:data:{composition['job_id']}', json.dumps(composition), ex=60*60*24*7)
+        current_app.vk.set(f'job:status:{composition['job_id']}', 'Pending...', ex=60*60*24*7)
+        current_app.vk.set(f'job:progress:{composition['job_id']}', 0.0, ex=60*60*24*7)
+        current_app.vk.set(f'job:tokens:{composition['job_id']}', 0, ex=60*60*24*7)
         current_app.vk.lpush('jobs:pending', composition['job_id'])
 
         return render_template('components/compose/var_prompt/process_input.html', job_id = composition['job_id'])
@@ -215,36 +207,42 @@ def register_compose_routes(app):
     @app.route('/component/compose/var-prompt/process/progress_stream/<job_id>')
     @login_required
     def comp_compose_var_prompt_process_progress(job_id):
-        def generate(tokens_ref = 0):
-            while (status := current_app.vk.get(f'jobs:status:{job_id}')) != 'Complete':
-                if (tokens := current_app.vk.get(f'jobs:tokens:{job_id}')) != tokens_ref:
+        def generate(tokens_ref=0):
+            while True:
+                status = current_app.vk.get(f'job:status:{job_id}')
+                if status and status == 'Complete':  # Yield a final message and break to end the stream.
+                    yield f'data: {json.dumps({"status": status, "progress": 100, "tokens": current_app.vk.get(f"job:tokens:{job_id}")})}\n\n'
+                    break
+                tokens = current_app.vk.get(f'job:tokens:{job_id}')
+                if tokens != tokens_ref:
                     tokens_ref = tokens
-                    yield f'data: {json.dumps({'status': status, 'progress': int(current_app.vk.get(f'jobs:progress:{job_id}') or 0), 'tokens': tokens})}\n\n'
+                    progress = round(float(current_app.vk.get(f"job:progress:{job_id}") or 0.0))
+                    yield f'data: {json.dumps({"status": status, "progress": progress, "tokens": tokens})}\n\n'
                 time.sleep(0.1)
-            
+    
         return Response(stream_with_context(generate()), mimetype='text/event-stream')
-
-
+    
     
     @app.route('/component/compose/var-prompt/process/complete/<job_id>')
     @login_required
-    def comp_compose_var_prompt_process_complete(job_id):   
-        request = Request.query.get(current_app.vk.get(f'jobs:request_id:{job_id}'))
-        current_app.vk.delete(f'jobs:request_id:{job_id}')
+    def comp_compose_var_prompt_process_complete(job_id): 
+        ''' Get the Request ID from the job ID, and then display the results. '''
 
+        # Wait until the job is complete. Maybe a better way to do this is to use a websocket or something similar but for POST_MVP
+        while current_app.vk.get(f'job:status:{job_id}') != 'Complete': time.sleep(0.2)
+
+        # Gets Request ID from the job ID, and then checks if the currently logged in user is allowed to see the results  
+        request_id = current_app.vk.get(f'job:request_id:{job_id}')
+        print(job_id)
+        print(request_id)
+        if not request_id: abort(404)
+        current_app.vk.delete(f'job:request_id:{job_id}')
+        request = Request.query.filter_by(id=request_id).first()
         if not request.user_id == current_user.id: abort(401)
 
-        ## Continue from here
-
-
-        return render_template(
-            'components/compose/var_prompt/view_results.html',
-            preview_list                = preview_list,
-            preview_list_is_complete    = preview_list_is_complete,
-            download_url                = url_for('download', request_id=request_id),
-        )
+        ## POST_MVP Add a preview of the results here
+        return render_template('components/compose/var_prompt/view_results.html', download_url = url_for('download', request_id=request_id))
                          
-#### EVERYTHING BELOW NEEDS TO BE REWRITTEN
 
     @app.route('/download/<request_id>')
     @login_required
@@ -270,4 +268,3 @@ def register_compose_routes(app):
         except FileNotFoundError: return {'error': 'File not found'}, 404
 
 
-    

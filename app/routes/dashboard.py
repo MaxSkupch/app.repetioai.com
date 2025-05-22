@@ -3,15 +3,15 @@ from flask          import render_template, session
 from flask_login    import login_required, current_user
 from urllib.parse   import quote
 
-from app            import db
 from app.functions  import token_count_to_short_string
-from app.models     import UserSubscription
 from app.values     import LEMONSQUEEZY_STORE_DOMAIN
 
 
 
 
 def register_dashboard_routes(app):
+
+    # Dash Full Pages
 
     @app.route('/')
     @login_required
@@ -37,15 +37,13 @@ def register_dashboard_routes(app):
     def dash_compose():
         session['current_window'] = 'dash_compose'
 
-        print(f'{current_user.token_balance}')
-
         if current_user.token_balance <= 0:
-            return "Not enough tokens"
+            return "Not enough tokens"  # TODO: Redirect to purchase page or somthing
 
         return render_template(
             'dash/windows/compose.html',
             window_title = 'Compose',
-            current_compose_step = session.get('current_compose_step', 0)
+            current_compose_step = session.get('current_composition_step', 0)
         )
 
     @app.route('/dash/window/history')
@@ -80,30 +78,17 @@ def register_dashboard_routes(app):
             ls_customer_portal_url = f'https://{LEMONSQUEEZY_STORE_DOMAIN}'
         )
 
+
+    # Dash Components
+
     @app.route('/component/token_count')
     @login_required
     def comp_token_count():
 
-        # Check user subscription status on evry load
-        # Also check before processing any request to prevent user from using service without subscription by bypassing this page
-        def user_has_active_subscription():
-            user_subscription = UserSubscription.query.filter_by(user_id=current_user.id, active=True).first()
-            
-            if  not user_subscription: 
-                return False
-            if user_subscription.end_time and user_subscription.end_time > datetime.now(timezone.utc):
-                user_subscription.active = False
-                db.session.commit()
-                return False
-            
-            return True
+        token_balance = current_user.token_balance
 
-    
-        if user_has_active_subscription(): 
-            tokens_left     = token_count_to_short_string(current_user.token_balance)
-            token_allowance = token_count_to_short_string(UserSubscription.query.filter_by(user_id=current_user.id, active=True).first().subscription.included_tokens)    
-            return f'<span class="font-bold">{tokens_left} / {token_allowance}</span><br><span>Tokens left</span>'
+        if token_balance > 0: return f'<span class="font-bold"             >{token_count_to_short_string(token_balance)}</span><br><span>Tokens left</span>'
+        else:                 return f'<span class="font-bold text-red-500">{token_count_to_short_string(token_balance)}</span><br><span class="text-red-500">Tokens left</span>'
         
-        else:                           
-            return f'<span class="font-bold text-red-600">No Plan</span><br><span class="text-red-600">Upgrade here</span>'
+        
 

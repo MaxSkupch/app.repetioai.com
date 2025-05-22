@@ -59,7 +59,7 @@ def create_app():
     from app.routes.compose         import register_compose_routes;         register_compose_routes(app)
     from app.routes.dashboard       import register_dashboard_routes;       register_dashboard_routes(app)
     from app.routes.history         import register_history_routes;         register_history_routes(app)
-    from app.routes.login           import register_login_routes;           register_login_routes(app)
-    from app.routes.subscription    import register_subscription_routes;    register_subscription_routes(app)
+    from app.routes.auth            import register_auth_routes;            register_auth_routes(app)
+    from app.routes.transactions    import register_transaction_routes;     register_transaction_routes(app)
 
     return app

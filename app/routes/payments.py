@@ -8,7 +8,7 @@ from flask_login    import current_user
 from urllib.parse   import quote
 
 from app            import db
-from app.models     import User, UserSubscription
+from app.models     import User
 from app.values     import lemonsqueezy_webhook_secret, lemonsqueezy_store_id, LEMONSQUEEZY_STORE_DOMAIN
 
 
@@ -28,6 +28,8 @@ def is_regex_valid_email(email: str):
 ### Main functions   
 
 def register_payments_routes(app):
+
+    ### TODO This all needs to be redone so that it works with the new database structure (aka no subscription table)
 
 
     @app.route('/integrations/ls-webhook', methods=['POST'])
@@ -57,20 +59,9 @@ def register_payments_routes(app):
                 user = User.query.filter_by(public_client_reference_id=a['customer_id']).first()
 
 
-                new_subscription = UserSubscription(
-                    user_id=user.id,
-                    subscription_id='subscription_type',  # Assuming you have a way to get subscription ID
-                    status=status,
-                        # 'on_trial'    Use with limited amount of tokens
-                        # 'active'      Regularly use Tokens
-                        # 'paused'      maybe not needed
-                        # 'past_due'    Deactivate Option to use
-                        # 'cancelled'   Regularly use Tokens (maybe add a small banner saying "subscription ends on")
-                        # 'expired'     Deactivate Option to use
-                    payment_time=datetime.now(timezone.utc)  # Set the payment time to now
-                )
-                db.session.add(new_subscription)
-                db.session.commit()
+
+
+                
                 
 
             except:

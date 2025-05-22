@@ -31,7 +31,7 @@
                 <div class="text-sm font-semibold text-indigo-600">
                     FOR RESPONSES
                 </div>
-                <div class="text-xs font-light">(Rough estimate)</div>
+                <div class="text-xs font-light">(Very rough estimate)</div>
             </div>
             <i class="fa-solid fa-equals"></i>
             <div
@@ -44,13 +44,13 @@
                 <div class="text-sm font-semibold text-indigo-600">
                     ESTIMATED TOTAL
                 </div>
-                <div class="text-xs font-light">(Rough estimate)</div>
+                <div class="text-xs font-light">(Very rough estimate)</div>
             </div>
         </div>
 
         <div class="flex gap-3 justify-between items-center">
             <a
-                hx-get="{{ url_for('comp_compose_var_prompt', n=(n-1) )}}"
+                hx-get="{{ url_for('comp_compose_var_prompt_input', n=(n-1) )}}"
                 hx-target="#compose-input-container"
                 hx-swap="innerHTML"
                 class="w-[200px] flex gap-2 justify-center items-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white cursor-pointer shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -66,7 +66,7 @@
             </a>
 
             <a
-                hx-get="{{ url_for('comp_compose_var_prompt_clear_data', n='0')}}"
+                hx-get="{{ url_for('comp_compose_var_prompt_clear_input', n='0')}}"
                 hx-target="#compose-input-container"
                 hx-swap="innerHTML"
                 class="font-bold text-sm text-red-600 cursor-pointer hover:text-red-400"
@@ -118,7 +118,7 @@
             <div
                 class="flex flex-wrap max-w-full gap-2 overflow-x-auto white-space-nowrap"
             >
-                {% for variable, values in variable_dict.items() %}
+                {% for variable, values in variable_value_pairings %}
                 <div
                     class="bg-white flex flex-col rounded-2xl px-2 pt-2 pb-4 border-0 shadow-sm ring-1 ring-inset ring-gray-300"
                 >

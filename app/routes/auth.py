@@ -6,15 +6,15 @@ from altcha         import ChallengeOptions, create_challenge, verify_solution
 from datetime       import datetime, timedelta
 from dotenv         import load_dotenv
 from flask          import request, render_template, flash, redirect, url_for
-from flask_login    import login_user, logout_user, login_required
+from flask_login    import login_user, logout_user, login_required, current_user
 from flask_mail     import Message
 from urllib.parse   import quote_plus, unquote_plus
 from zoneinfo       import ZoneInfo, ZoneInfoNotFoundError
 
 from app            import mail, db
 from app.functions  import is_regex_valid_email
-from app.models     import User, UserSubscription
-from app.values     import ALTCHA_HMAC_KEY
+from app.models     import User, TokenTransaction
+from app.values     import ALTCHA_HMAC_KEY, FREE_TRAIL_TOKENS
 
 
 load_dotenv()
@@ -40,7 +40,7 @@ def altcha_challange_verified(altcha_input):
 
 
 
-def register_login_routes(app):
+def register_auth_routes(app):
 
     @app.route('/login', methods=['GET', 'POST'])
     def auth_login():
@@ -109,21 +109,21 @@ def register_login_routes(app):
             except ZoneInfoNotFoundError: timezone = 'UTC'
             
             if timezone and timezone != user.timezone:
-                user.timezone = timezone
+                current_user.timezone = timezone
                 db.session.commit()
 
-            if user.is_new:
+            if not current_user.first_login_completed:
 
-                user_subscription = UserSubscription(
+                free_trial = TokenTransaction(
                     user_id         = user.id,
-                    subscription_id = 1,
-                    status          = 'active',
-                    next_reset_time = datetime.now(timezone_object) + timedelta(weeks=2),
-
+                    amount          = FREE_TRAIL_TOKENS, 
+                    description      = 'Free trial tokens'
                 )
-                db.session.add(user_subscription)
+                current_user.token_balance = FREE_TRAIL_TOKENS
+                current_user.first_login_completed = True
+                db.session.add(free_trial)
                 db.session.commit()
-                user.is_new = False
+                
             
             return redirect(url_for('dash_base'))
         
