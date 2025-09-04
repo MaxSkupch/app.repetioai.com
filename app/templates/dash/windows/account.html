@@ -27,7 +27,7 @@
     
                     <div class="flex gap-3">
                         {% set text = 'Update Information' %}
-                        {% include 'elements/buttons/button_spinner.html'%}
+                        {% include 'elements/buttons/submit_button_spinner.html'%}
 
                         <a hx-get="{{ url_for('comp_account_personal_information') }}" hx-target="#personal_inforamtion" hx-swap="innerHTML" 
                         class="flex w-[200px] justify-center rounded-2xl border-2 border-black px-3 py-1 text-sm font-semibold leading-6 text-black shadow-sm cursor-pointer hover:bg-indigo-900 hover:border-indigo-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -48,7 +48,7 @@
                     
                     <div class="flex gap-3">
                         {% set text = 'Update Email' %}
-                        {% include 'elements/buttons/button_spinner.html'%}
+                        {% include 'elements/buttons/submit_button_spinner.html'%}
 
                         <a 
                             hx-get="{{ url_for('comp_account_update_email_cancel') }}" 
@@ -65,8 +65,8 @@
                 <h2 class="text-2xl font-semibold">Manage Subscription Plans & Billing</h2>
                 <div class="py-6 space-y-5">
                     <p>Manage your billing and subscription settings. View and modify or pause subscriptions, update payment methods, download invoices, apply promo codes, and update personal information.</p>
-                    <a href="{{ ls_customer_portal_url }}" target="_blank" class="w-[200px] flex justify-center rounded-2xl bg-black px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                    >Manage Subscription</a>
+                    {% set href, text = ls_customer_portal_url, 'Manage Subscription' %}
+                    {% include 'elements/buttons/href_button.html' with context %}
                 </div>
             </div>
             <div class="py-6 space-y-2 flex flex-col">

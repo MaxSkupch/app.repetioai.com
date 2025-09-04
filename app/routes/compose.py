@@ -37,7 +37,7 @@ from app            import db
 from app.extensions import openai_client
 from app.functions  import token_count_to_string
 from app.models     import Request
-from app.values     import OPENAI_API_MODEL_NAME
+from app.values     import OPENAI_API_MODEL_NAME, OPENAI_API_MODEL_CONTEXT_WINDOW
 
 
 '''
@@ -160,6 +160,14 @@ def register_compose_routes(app):
         else: prompts = [text_segments[0] + ''.join(value + text_segments[i + 1] for i, value in enumerate(combo)) for combo in value_combinations]
 
         prompt_token_count = sum(len(tiktoken.encoding_for_model(OPENAI_API_MODEL_NAME).encode(prompt)) for prompt in prompts)
+
+        session['composition_preview'] = {  # Acts as intermediary between the draft and the final composition, so as to not compute everything twice. Gets deleted when the job is started, or overwritten when the user goes back to the input page.
+            'text_segments': text_segments,
+            'variables': variables,  
+            'values': values,
+            'prompt_token_count': prompt_token_count,
+            'prompts': prompts,
+        }
         
         return render_template(
             'components/compose/var_prompt/confirm_input.html',
@@ -169,8 +177,8 @@ def register_compose_routes(app):
             prompts_list            = prompts,
             prompts_amount          = len(prompts),
             prompt_token_count      = token_count_to_string(prompt_token_count),
-            response_token_count    = token_count_to_string(round(prompt_token_count * 1.8)),  # TODO: Track this in the future and adjust it
-            total_token_count       = token_count_to_string(round(prompt_token_count * 2.8)),  # TODO: Track this in the future and adjust it
+            response_token_count    = token_count_to_string(round(prompt_token_count * 1.8)),  # POST_MVP: Track this in the future and adjust it
+            total_token_count       = token_count_to_string(round(prompt_token_count * 2.8)),  # POST_MVP: Track this in the future and adjust it
         )
 
     @app.route('/component/compose/var-prompt/process/start')
@@ -178,20 +186,29 @@ def register_compose_routes(app):
     def comp_compose_var_prompt_process_start():
         ''' Get then delete the composition draft from the session, upload the finalized composition to the queue and redirect to the progress page. '''
 
-        # TODO Check if the token count is too high for the model (context window)
-        # TODO Check if the token count is too high for the user 
-        # If to high -> redirect to the confirmation page with a flah warning, and do so before popping the session
+        composition_draft, composition_preview = session.get('composition_draft', None), session.get('composition_preview', None)
+        if not composition_draft or not composition_preview: abort(404)
 
-        composition_draft = session.pop('composition_draft', None)
-        if not composition_draft: abort(404)
+        if current_user.token_balance <= composition_preview['prompt_token_count']: 
+            flash('Not enough tokens. The tokencount of the composition prompts alone is higher than your current token balance. Please purchase more tokens', 'error')
+            return redirect(url_for('comp_compose_var_prompt_confirm'))
+        
+        if composition_preview['prompt_token_count'] > int(OPENAI_API_MODEL_CONTEXT_WINDOW):  # Pre check so we dont have to check everything always
+            for prompt in composition_preview['prompts']:
+                if len(tiktoken.encoding_for_model(OPENAI_API_MODEL_NAME).encode(prompt)) > int(OPENAI_API_MODEL_CONTEXT_WINDOW):
+                    flash(f'The token count of at least one prompts is too long. No single prompt can be longer than {token_count_to_string(int(OPENAI_API_MODEL_CONTEXT_WINDOW))} tokens.', 'error')
+                    return redirect(url_for('comp_compose_var_prompt_confirm'))
+                
+        session.pop('composition_draft', None)
+        session.pop('composition_preview', None)
         session['current_composition_step'] = 0
 
         composition = {
             'job_id': str(uuid.uuid4()),  # Example: '123e4567-e89b-12d3-a456-426614174000'
             'user_id': current_user.id,
-            'text_segments': re.split(r'{{.*?}}', composition_draft[0]),
-            'variables': [var.strip() if var.strip() else f'Variable {i+1}' for i, var in enumerate(re.findall(r'{{(.*?)}}', composition_draft[0]))],  
-            'values': [[value.strip() for value in value_text.split(seperator) if value.strip()] for value_text, seperator in composition_draft[1:]],
+            'text_segments': composition_preview['text_segments'],
+            'variables': composition_preview['variables'],  
+            'values': composition_preview['values'],
         } 
 
         # All VK entries are deleted by the Request Processor when the job is completed

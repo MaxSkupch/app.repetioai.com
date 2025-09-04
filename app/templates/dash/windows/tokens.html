@@ -3,16 +3,15 @@
 {% block content %}
 
 <section class="max-w-full w-full px-4 py-8 md:p-8">
-    <div class="divide-y">
-        <div class="pt-6 space-y-5 pb-8">
-            <h2 class="text-2xl font-semibold">Active Plan</h2>
-            <div hx-get="{{ url_for('comp_token_page_subscription_status')}}" hx-trigger="load" hx-swap="outerHTML"></div>
-        </div>
-        {#<div id="history-input-container" class="py-6 space-y-2 flex flex-col ">
-            <h2 class="text-2xl font-semibold">Past Plans</h2>
-            <div hx-get="{{ url_for('comp_request_history_cards_batch', n=1)}}" hx-trigger="load" hx-swap="outerHTML"></div>
-        </div>#}
+    <div class="flex flex-col items-center justify-center gap-4 whitespace-nowrap mb-12">
+        {% set number, unit, title, subtitle = token_balance, 'Tokens', 'AVAILABLE IN YOUR ACCOUNT', ''%}
+        {% include 'elements/displays/number_card.html'%}
+
+        {% set href, text = '', 'Get More Tokens' %}
+        {% include 'elements/buttons/href_button.html'%}
     </div>
+    <div hx-get="{{ url_for('comp_tokens_transactions_batch', n=1)}}" hx-trigger="load" hx-swap="outerHTML"></div>
+ 
 </section>
 
 

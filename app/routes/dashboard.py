@@ -3,7 +3,7 @@ from flask          import render_template, session
 from flask_login    import login_required, current_user
 from urllib.parse   import quote
 
-from app.functions  import token_count_to_short_string
+from app.functions  import token_count_to_short_string, token_count_to_string
 from app.values     import LEMONSQUEEZY_STORE_DOMAIN
 
 
@@ -29,7 +29,8 @@ def register_dashboard_routes(app):
         session['current_window'] = 'dash_tokens'
         return render_template(
             'dash/windows/tokens.html',
-            window_title = 'Tokens & Plans'
+            window_title = 'Tokens',
+            token_balance = token_count_to_string(current_user.token_balance),
         )
 
     @app.route('/dash/window/compose')

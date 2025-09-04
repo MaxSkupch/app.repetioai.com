@@ -3,7 +3,7 @@
         <div class="space-y-1">
             {% set colors = {'success': 'bg-green-200', 'error': 'bg-red-200'} %}
             {% for category, message in messages %}
-                <div class="text-center {{ colors.get(category, 'bg-gray-200') }} mt-1 mb-1 px-3 py-2 text-sm rounded-xl">{{ message }}</div>
+                <div class="text-center {{ colors.get(category, 'bg-gray-200') }} px-3 py-2 text-sm rounded-xl">{{ message }}</div>
             {% endfor %}
         </div>
     {% endif %}

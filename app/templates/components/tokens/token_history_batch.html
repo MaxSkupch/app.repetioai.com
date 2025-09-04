@@ -1,0 +1,30 @@
+<div class="w-full">
+    {% for transaction in transactions %}
+        <div class="w-full min-w-[300px] bg-white flex flex-none gap-4 rounded-2xl py-6 px-8 border-0 shadow-sm ring-1 ring-inset ring-gray-300 whitespace-nowrap mb-8">
+            <div class="flex-1 flex items-center justify-start">
+                {{ transaction['created_at_date']}} {{ transaction['created_at_time']}}
+            </div>
+            <div class="flex-1 flex items-center justify-center">
+                {{ transaction['description']}}
+            </div>
+            <div class="flex-1 flex items-center justify-end">
+                <span class="font-bold">{{ transaction['amount'] }}</span> <span class="text-xs font-light">Tokens</span>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if has_more %}
+    <div 
+        hx-get="{{ url_for('comp_tokens_transactions_batch', n=n)}}" 
+        hx-trigger="intersect" 
+        hx-swap="outerHTML" 
+        hx-indicator="#spinner-more" 
+        class="h-[100px] w-full flex justify-center"
+    >
+        <img id="spinner-more" class="htmx-indicator h-[50px] mt-5" src="{{ url_for('static', filename='spinners/tail-spin-dark.svg') }}">
+    </div>
+{% else %}
+    <div class="w-full text-center mt-5">No more requests exist in your history</div>
+{% endif %}
+
